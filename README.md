@@ -25,7 +25,31 @@ AI Agent 多智能体共识系统 - 使用 LangGraph 实现多智能体结构化
 - Docker
 - Docker Compose
 
-#### 启动步骤
+#### 选项 A: 使用预构建镜像（推荐）
+
+```bash
+# 1. 拉取镜像
+docker pull ghcr.io/your-org/consensus:latest
+
+# 2. 配置环境变量
+cat > .env << EOF
+OPENAI_API_KEY=your_api_key_here
+OPENAI_BASE_URL=  # optional
+EOF
+
+# 3. 运行容器
+docker run -d \
+  --name consensus \
+  -p 8123:8123 \
+  --env-file .env \
+  -v consensus-data:/app/.langgraph_api \
+  ghcr.io/your-org/consensus:latest
+
+# 4. 访问应用
+# 前端 + 后端: http://localhost:8123
+```
+
+#### 选项 B: 使用 Docker Compose
 
 ```bash
 # 1. 克隆仓库
@@ -36,12 +60,33 @@ cd consensus
 cp .env.example .env
 # 编辑 .env 文件，填入 OPENAI_API_KEY
 
-# 3. 启动服务
+# 3. 修改 docker-compose.yml 使用预构建镜像
+# 将 image: ghcr.io/your-org/consensus:latest 替换 build: .
+
+# 4. 启动服务
 docker-compose up -d
+
+# 5. 访问应用
+# 前端 + 后端: http://localhost:8123
+# API 端点: http://localhost:8123/api/*
+```
+
+#### 选项 C: 本地构建
+
+```bash
+# 1. 克隆仓库
+git clone <repository-url>
+cd consensus
+
+# 2. 配置环境变量
+cp .env.example .env
+# 编辑 .env 文件，填入 OPENAI_API_KEY
+
+# 3. 构建并启动
+docker-compose up -d --build
 
 # 4. 访问应用
 # 前端 + 后端: http://localhost:8123
-# API 端点: http://localhost:8123/api/*
 ```
 
 #### Docker 命令
@@ -49,16 +94,31 @@ docker-compose up -d
 ```bash
 # 查看日志
 docker-compose logs -f
+# 或
+docker logs -f consensus
 
 # 停止服务
 docker-compose down
+# 或
+docker stop consensus && docker rm consensus
 
 # 重新构建并启动
 docker-compose up -d --build
 
 # 清理数据卷（慎用！）
 docker-compose down -v
+
+# 进入容器
+docker exec -it consensus sh
 ```
+
+#### 可用的 Docker 镜像标签
+
+- `latest` - 最新的 main 分支构建
+- `v1.0.0` - 特定版本
+- `v1.0` - 次版本
+- `v1` - 主版本
+- `main` - main 分支的最新构建
 
 ### 方式二：本地开发
 

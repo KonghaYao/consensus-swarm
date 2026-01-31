@@ -1,10 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import {
-  getAgentsAsync,
-  deleteAgentAsync,
-  resetAgentsAsync,
-  type AgentConfig,
-} from '@/lib/agent-data-service';
+import { getAgentsAsync, deleteAgentAsync, resetAgentsAsync, type AgentConfig } from '@/lib/agent-data-service';
 import { Button } from '@/components/ui/button';
 import { AgentCard } from '@/components/agent-config/AgentCard';
 import { AgentConfigForm } from '@/components/agent-config/AgentConfigForm';
@@ -75,7 +70,11 @@ export function AgentConfigPage() {
   };
 
   const handleReset = async () => {
-    if (confirm('Are you sure you want to reset all agents to default configurations? This will delete all custom agents.')) {
+    if (
+      confirm(
+        'Are you sure you want to reset all agents to default configurations? This will delete all custom agents.',
+      )
+    ) {
       setActionInProgress(true);
       try {
         await resetAgentsAsync();
@@ -116,7 +115,7 @@ export function AgentConfigPage() {
         />
       }
     >
-      <div className="flex h-full">
+      <div className="flex h-full bg-white">
         {/* 左侧内容区 */}
         <div className="flex-1 p-6 transition-all duration-300">
           {loading ? (
@@ -133,11 +132,13 @@ export function AgentConfigPage() {
               <p className="text-sm text-muted-foreground">点击右上角"添加 Agent"开始创建</p>
             </div>
           ) : (
-            <div className={`grid gap-4 lg:gap-6 ${
-              showForm
-                ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'
-                : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7'
-            }`}>
+            <div
+              className={`grid gap-4 lg:gap-6 ${
+                showForm
+                  ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'
+                  : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7'
+              }`}
+            >
               {agents.map((agent) => (
                 <AgentCard
                   key={agent.id}
@@ -154,11 +155,7 @@ export function AgentConfigPage() {
         {/* 右侧配置栏 */}
         {showForm && (
           <div className="w-full sm:w-96 border-l bg-background p-6 overflow-y-auto">
-            <AgentConfigForm
-              agent={editingAgent}
-              onSave={handleFormSave}
-              onCancel={handleFormCancel}
-            />
+            <AgentConfigForm agent={editingAgent} onSave={handleFormSave} onCancel={handleFormCancel} />
           </div>
         )}
       </div>

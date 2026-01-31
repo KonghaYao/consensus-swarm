@@ -2,9 +2,16 @@ version: '3.8'
 
 services:
   consensus:
+  # 选项 A: 使用预构建镜像（推荐）
+  # 取消下面的注释并注释掉 build 部分
+  #  image: ghcr.io/your-org/consensus:latest
+
+  # 选项 B: 本地构建
+  # 取消下面的 build 部分，注释掉 image 部分
     build:
       context: .
       dockerfile: Dockerfile
+
     container_name: consensus-app
     ports:
       - "8123:8123"

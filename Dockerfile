@@ -14,7 +14,7 @@ RUN npm install -g pnpm@10.24.0
 WORKDIR /app
 
 # Copy package.json files for dependency installation
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY server/package.json ./server/
 COPY frontend/package.json ./frontend/
 
@@ -25,8 +25,8 @@ RUN pnpm install --frozen-lockfile
 COPY server ./server
 COPY frontend ./frontend
 
-# Build frontend and backend
-RUN pnpm build
+# Build frontend only (server doesn't need compilation, bun runs TS directly)
+RUN pnpm build:frontend
 
 # ============================================
 # Stage 2: Runtime with Bun
@@ -39,22 +39,18 @@ RUN apk add --no-cache dumb-init
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy package files (for metadata)
 COPY package.json pnpm-lock.yaml ./
 COPY server/package.json ./server/
 
-# Install production dependencies only using pnpm
-RUN npm install -g pnpm@10.24.0 && \
-    pnpm install --prod --frozen-lockfile
+# Copy server source code and dependencies from builder
+COPY --from=builder /app/server ./server
 
-# Copy built backend from builder
-COPY --from=builder /app/server/dist ./server/dist
+# Copy root dependencies
+COPY --from=builder /app/node_modules ./node_modules
 
 # Copy built frontend from builder to be served by backend
 COPY --from=builder /app/frontend/dist ./server/dist/frontend
-
-# Copy any configuration files
-COPY server/src/config ./server/src/config
 
 # Create directory for SQLite database
 RUN mkdir -p /app/.langgraph_api
