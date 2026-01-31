@@ -2,7 +2,7 @@
  * ChatPage - 聊天页面
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useChat } from '@langgraph-js/sdk/react';
 import { useSettings } from '@/provider/SettingsProvider';
 import {
@@ -39,6 +39,12 @@ export function ChatPage() {
     selectedAgents: AgentConfig[];
   } | null>(null);
 
+  // 使用 ref 存储 extraParams，避免依赖变化
+  const extraParamsRef = useRef(extraParams);
+  useEffect(() => {
+    extraParamsRef.current = extraParams;
+  }, [extraParams]);
+
   useEffect(() => {
     setTools(DefaultTools);
   }, [setTools]);
@@ -52,6 +58,14 @@ export function ChatPage() {
       data.selectedAgents.includes(a.id)
     );
 
+    // 先保存配置并切换界面
+    setMeetingConfig({
+      topic: data.topic,
+      context: data.context,
+      selectedAgents: selectedAgentConfigs,
+    });
+    setIsInitialized(true);
+
     // 构建初始化消息
     const initMessage = `会议开始！
 主题：${data.topic}
@@ -64,8 +78,8 @@ export function ChatPage() {
 
 ${data.context ? `**背景信息：**\n${data.context}\n` : ''}请各位发表意见。`;
 
-    // 发送初始化消息
-    await sendMessage(
+    // 发送初始化消息（不等待完成）
+    sendMessage(
       [
         {
           type: 'human',
@@ -74,22 +88,17 @@ ${data.context ? `**背景信息：**\n${data.context}\n` : ''}请各位发表�
       ],
       {
         extraParams: {
-          ...extraParams,
-          agentId: selectedAgentId,
+          ...extraParamsRef.current,
+          agentId: 'master', // 使用固定的 master agent
           topic: data.topic,
           context: data.context || {},
           agentConfigs: selectedAgentConfigs,
         },
       },
-    );
-
-    setMeetingConfig({
-      topic: data.topic,
-      context: data.context,
-      selectedAgents: selectedAgentConfigs,
+    ).catch((error) => {
+      console.error('Failed to send initialization message:', error);
     });
-    setIsInitialized(true);
-  }, [agents, sendMessage, extraParams, selectedAgentId]);
+  }, [agents, sendMessage]);
 
   const handleSend = useCallback(async () => {
     if (!userInput.trim() || loading) return;

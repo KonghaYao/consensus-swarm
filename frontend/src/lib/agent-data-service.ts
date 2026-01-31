@@ -22,6 +22,16 @@ export interface AgentConfig {
   model: ModelConfig;
   tools: Record<string, boolean>;
   contextTemplate?: string;
+  avatar?: string;
+}
+
+/**
+ * 生成 agent 的头像 URL（使用 DiceBear API）
+ */
+function generateAvatarUrl(agentId: string, agentName: string): string {
+  // 使用 notionists 风格（简笔画风格，类似 Notion 插图）
+  // seed 使用 agent id 确保每次生成的头像一致
+  return `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(agentId)}`;
 }
 
 // Initial data from backend config files (mirrored)
@@ -41,6 +51,7 @@ const masterAgentConfig: AgentConfig = {
     enableThinking: true,
   },
   tools: {},
+  avatar: generateAvatarUrl('master', '主持人'),
 };
 
 const subAgentConfigs: AgentConfig[] = [
@@ -58,6 +69,7 @@ const subAgentConfigs: AgentConfig[] = [
       temperature: 0.7,
     },
     tools: {},
+    avatar: generateAvatarUrl('technical-director', '技术总监'),
   },
   {
     id: 'product-manager',
@@ -73,6 +85,7 @@ const subAgentConfigs: AgentConfig[] = [
       temperature: 0.7,
     },
     tools: {},
+    avatar: generateAvatarUrl('product-manager', '产品经理'),
   },
   {
     id: 'team-lead',
@@ -88,6 +101,7 @@ const subAgentConfigs: AgentConfig[] = [
       temperature: 0.7,
     },
     tools: {},
+    avatar: generateAvatarUrl('team-lead', '团队负责人'),
   },
   {
     id: 'backend-engineer',
@@ -103,6 +117,7 @@ const subAgentConfigs: AgentConfig[] = [
       temperature: 0.7,
     },
     tools: {},
+    avatar: generateAvatarUrl('backend-engineer', '后端工程师'),
   },
   {
     id: 'frontend-engineer',
@@ -118,6 +133,7 @@ const subAgentConfigs: AgentConfig[] = [
       temperature: 0.7,
     },
     tools: {},
+    avatar: generateAvatarUrl('frontend-engineer', '前端工程师'),
   },
   {
     id: 'ui-ux-designer',
@@ -133,6 +149,7 @@ const subAgentConfigs: AgentConfig[] = [
       temperature: 0.7,
     },
     tools: {},
+    avatar: generateAvatarUrl('ui-ux-designer', 'UI/UX设计师'),
   },
   {
     id: 'operations-specialist',
@@ -148,6 +165,7 @@ const subAgentConfigs: AgentConfig[] = [
       temperature: 0.7,
     },
     tools: {},
+    avatar: generateAvatarUrl('operations-specialist', '运维专家'),
   },
   {
     id: 'data-analyst',
@@ -163,6 +181,7 @@ const subAgentConfigs: AgentConfig[] = [
       temperature: 0.7,
     },
     tools: {},
+    avatar: generateAvatarUrl('data-analyst', '数据分析师'),
   },
   {
     id: 'marketing-manager',
@@ -178,6 +197,7 @@ const subAgentConfigs: AgentConfig[] = [
       temperature: 0.7,
     },
     tools: {},
+    avatar: generateAvatarUrl('marketing-manager', '市场经理'),
   },
 ];
 
@@ -197,6 +217,10 @@ export function getAgents(): AgentConfig[] {
 
 export function getAgentById(id: string): AgentConfig | undefined {
   return agents.find((agent) => agent.id === id);
+}
+
+export function getAgentByName(name: string): AgentConfig | undefined {
+  return agents.find((agent) => agent.role.name === name);
 }
 
 export function createAgent(agent: Omit<AgentConfig, 'id'>): AgentConfig {

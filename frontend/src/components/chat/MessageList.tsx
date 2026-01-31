@@ -7,51 +7,36 @@ import { HumanMessage } from './HumanMessage';
 import { BotMessage } from './BotMessage';
 import { ToolMessage } from './ToolMessage';
 import { LoadingIndicator } from './LoadingIndicator';
+import type { RenderMessage } from '@langgraph-js/sdk';
 
 interface MessageListProps {
-  messages: any[];
+  messages: RenderMessage[];
   loading: boolean;
 }
 
-function getMessageContent(message: any): { type: string; content: string; toolName?: string; result?: any } {
+type MessageContent = string | { text?: string } | Array<{ type: string; text?: string; [key: string]: any }>;
+
+/**
+ * 判断消息类型
+ */
+function getMessageType(message: RenderMessage): 'human' | 'bot' | 'tool' {
   if (message.type === 'human') {
-    return {
-      type: 'human',
-      content: typeof message.content === 'string' ? message.content : JSON.stringify(message.content),
-    };
+    return 'human';
   }
 
-  if (Array.isArray(message.content)) {
-    for (const item of message.content) {
-      if (item.type === 'tool-use') {
-        return {
-          type: 'tool-use',
-          content: '',
-          toolName: item.name,
-          result: item.input,
-        };
-      }
-      if (item.type === 'tool-result') {
-        return {
-          type: 'tool-result',
-          content: '',
-          toolName: item.tool_name,
-          result: item.result,
-        };
-      }
-      if (item.type === 'text') {
-        return {
-          type: 'bot',
-          content: item.text,
-        };
-      }
+  const content = message.content as MessageContent;
+
+  // 检查 content 数组中是否包含工具相关内容
+  if (Array.isArray(content)) {
+    const hasToolContent = content.some(
+      (item) => item.type === 'tool-use' || item.type === 'tool-result'
+    );
+    if (hasToolContent) {
+      return 'tool';
     }
   }
 
-  return {
-    type: 'bot',
-    content: typeof message.content === 'string' ? message.content : JSON.stringify(message.content),
-  };
+  return 'bot';
 }
 
 export function MessageList({ messages, loading }: MessageListProps) {
@@ -64,25 +49,18 @@ export function MessageList({ messages, loading }: MessageListProps) {
   return (
     <div className="space-y-6">
       {messages.map((message, index) => {
-        const { type, content, toolName, result } = getMessageContent(message);
+        const messageType = getMessageType(message);
 
-        if (type === 'human') {
-          return <HumanMessage key={`${message.id}-${index}`} content={content} />;
+        if (messageType === 'human') {
+          return <HumanMessage key={`${message.id}-${index}`} message={message} />;
         }
 
-        if (type === 'bot') {
-          return <BotMessage key={`${message.id}-${index}`} content={content} />;
+        if (messageType === 'bot') {
+          return <BotMessage key={`${message.id}-${index}`} message={message} />;
         }
 
-        if (type === 'tool-use' || type === 'tool-result') {
-          return (
-            <ToolMessage
-              key={`${message.id}-${index}`}
-              toolName={toolName}
-              type={type as 'tool-use' | 'tool-result'}
-              result={result}
-            />
-          );
+        if (messageType === 'tool') {
+          return <ToolMessage key={`${message.id}-${index}`} message={message} />;
         }
 
         return null;

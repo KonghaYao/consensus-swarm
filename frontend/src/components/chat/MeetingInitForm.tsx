@@ -9,13 +9,124 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Users, Calendar, Target, Crown } from 'lucide-react';
+import { Users, Calendar, Target, Crown, Shuffle } from 'lucide-react';
 import type { AgentConfig } from '@/lib/agent-data-service';
 
 interface MeetingInitFormProps {
   agents: AgentConfig[];
   onSubmit: (data: { topic: string; context: string; selectedAgents: string[] }) => void;
 }
+
+/**
+ * 预设的会议模板
+ */
+const MEETING_TEMPLATES = [
+  {
+    topic: '是否应该采用微服务架构？',
+    context: `当前系统是单体架构，团队规模约 20 人。
+业务复杂度逐渐增加，部署周期变长，部分模块需要独立扩展。
+
+技术栈：Java Spring Boot + PostgreSQL + Redis
+考虑因素：
+- 开发效率和运维成本
+- 系统可扩展性和性能
+- 团队技术能力和学习曲线
+- 数据一致性和分布式事务处理`,
+  },
+  {
+    topic: '产品是否应该引入 AI 助手功能？',
+    context: `我们的产品是企业级协作工具，用户经常需要处理大量文档和信息。
+
+考虑的方向：
+- 智能文档摘要和问答
+- 自动生成会议纪要
+- 智能推荐和搜索
+
+资源限制：
+- 开发周期：3 个月
+- 预算：需要考虑 API 调用成本
+- 团队：有 2 名工程师熟悉 AI/ML
+
+风险：
+- 数据隐私和合规性
+- AI 生成结果的准确性
+- 用户接受度`,
+  },
+  {
+    topic: '是否应该强制执行代码审查政策？',
+    context: `当前团队代码审查情况：
+- 部分团队成员积极进行 PR review
+- 有些代码未经审查直接合并
+- 平均 review 响应时间较长
+
+考虑的方案：
+A. 所有代码必须经过至少 1 人审查才能合并
+B. 按照风险等级分类，核心模块强制审查
+C. 保持自愿审查，鼓励文化而非强制
+
+目标：
+- 提高代码质量
+- 知识共享和团队成长
+- 平衡开发效率和代码质量`,
+  },
+  {
+    topic: '是否应该从 REST API 迁移到 GraphQL？',
+    context: `当前系统使用 REST API，遇到的问题：
+- Over-fetching 和 under-fetching
+- 多个 endpoint 导致前端集成复杂
+- API 版本管理复杂
+
+GraphQL 的优势：
+- 按需获取数据
+- 强类型 schema
+- 更好的开发工具
+
+顾虑：
+- 团队学习成本
+- 后端重构工作量
+- 缓存和性能优化
+- 错误处理和监控`,
+  },
+  {
+    topic: '是否应该采用四天工作制？',
+    context: `公司背景：创业公司，约 30 人
+
+支持理由：
+- 提高员工满意度和工作生活平衡
+- 吸引和保留人才
+- 可能提升工作效率
+
+顾虑：
+- 项目交付周期压力
+- 客户响应时间
+- 薪酬是否需要调整
+
+可能的方案：
+A. 每周工作 4 天，每天 10 小时
+B. 保持每天 8 小时，但每周休 3 天
+C. 试点运行 3 个月后再评估`,
+  },
+  {
+    topic: '是否应该开源我们的核心 SDK？',
+    context: `我们开发了一个通用的 SDK，用于简化与服务的集成。
+
+优势：
+- 社区贡献和反馈
+- 品牌曝光和技术影响力
+- 招募人才
+
+风险：
+- 竞争对手可能利用
+- 需要投入资源维护社区
+- 可能暴露内部实现细节
+
+考虑条件：
+- 文档完善程度
+- 代码质量和可维护性
+- 商业机密是否包含其中
+- 团队支持能力`,
+  },
+];
 
 export function MeetingInitForm({ agents, onSubmit }: MeetingInitFormProps) {
   const [topic, setTopic] = useState('');
@@ -36,7 +147,7 @@ export function MeetingInitForm({ agents, onSubmit }: MeetingInitFormProps) {
     return defaultAgents;
   });
 
-  const handleToggleAgent = (agentId: string) => {
+  const handleToggleAgent = React.useCallback((agentId: string) => {
     // 主持人不能取消
     if (agentId === masterAgentId) return;
 
@@ -45,7 +156,7 @@ export function MeetingInitForm({ agents, onSubmit }: MeetingInitFormProps) {
         ? prev.filter((id) => id !== agentId)
         : [...prev, agentId]
     );
-  };
+  }, [masterAgentId]);
 
   const handleSelectAll = () => {
     const nonMasterAgents = agents.filter(a => a.id !== masterAgentId);
@@ -60,6 +171,13 @@ export function MeetingInitForm({ agents, onSubmit }: MeetingInitFormProps) {
       // 选择所有
       setSelectedAgents(agents.map((a) => a.id));
     }
+  };
+
+  const handleRandomTemplate = () => {
+    const randomIndex = Math.floor(Math.random() * MEETING_TEMPLATES.length);
+    const template = MEETING_TEMPLATES[randomIndex];
+    setTopic(template.topic);
+    setContext(template.context);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -94,10 +212,22 @@ export function MeetingInitForm({ agents, onSubmit }: MeetingInitFormProps) {
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* 会议主题 */}
           <div className="space-y-2">
-            <Label htmlFor="topic" className="flex items-center gap-2">
-              <Target className="w-4 h-4" />
-              会议主题 *
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="topic" className="flex items-center gap-2">
+                <Target className="w-4 h-4" />
+                会议主题 *
+              </Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleRandomTemplate}
+                className="gap-1"
+              >
+                <Shuffle className="w-3 h-3" />
+                随机示例
+              </Button>
+            </div>
             <Input
               id="topic"
               value={topic}
@@ -106,7 +236,7 @@ export function MeetingInitForm({ agents, onSubmit }: MeetingInitFormProps) {
               className="text-lg"
             />
             <p className="text-sm text-muted-foreground">
-              清晰描述需要讨论和达成共识的核心议题
+              清晰描述需要讨论和达成共识的核心议题，或点击"随机示例"快速开始
             </p>
           </div>
 
@@ -176,12 +306,25 @@ export function MeetingInitForm({ agents, onSubmit }: MeetingInitFormProps) {
                       className={`flex items-start gap-3 ${!isMaster ? 'cursor-pointer' : ''}`}
                       onClick={() => !isMaster && handleToggleAgent(agent.id)}
                     >
-                      <Checkbox
-                        checked={isSelected}
-                        disabled={isMaster}
-                        onChange={() => handleToggleAgent(agent.id)}
-                        className="mt-1"
-                      />
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={isSelected}
+                          disabled={isMaster}
+                          onCheckedChange={() => handleToggleAgent(agent.id)}
+                          className="mt-1"
+                        />
+                      </div>
+                      {agent.avatar && (
+                        <img
+                          src={agent.avatar}
+                          alt={agent.role.name}
+                          className="w-10 h-10 rounded-full flex-shrink-0 bg-gray-100"
+                          loading="lazy"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-medium">{agent.role.name}</span>
