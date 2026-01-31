@@ -144,10 +144,8 @@ export function createVotingTool(state: ConsensusStateType) {
 
 **重要：只有所有人都投赞成票（100%同意）才能结束会议。**
 
-回复格式：
-<vote>yes</vote> 或 <vote>no</vote>
-
-投票后请简要说明理由。`,
+不需要回复理由，请直接回复格式进行投票：
+<vote>yes</vote> 或 <vote>no</vote>`,
             );
 
             // 并发调用所有 Agent 进行投票
