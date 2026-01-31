@@ -5,6 +5,7 @@ interface InitChatModelOptions {
     modelProvider?: string;
     streamUsage?: boolean;
     enableThinking?: boolean;
+    temperature?: number;
 }
 
 export const initChatModel = async (mainModel: string, options: InitChatModelOptions = {}) => {
@@ -19,6 +20,7 @@ export const initChatModel = async (mainModel: string, options: InitChatModelOpt
             streaming: true,
             maxRetries: 1,
             maxTokens: 65536,
+            temperature: options.temperature,
             thinking: enableThinking
                 ? {
                       budget_tokens: 1024,
@@ -31,6 +33,7 @@ export const initChatModel = async (mainModel: string, options: InitChatModelOpt
             model: mainModel,
             streamUsage: true,
             maxRetries: 1,
+            temperature: options.temperature,
             modelKwargs: enableThinking
                 ? {
                       thinking: {

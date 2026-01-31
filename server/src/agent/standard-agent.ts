@@ -2,10 +2,11 @@
  * Standard Agent 创建器
  * 提供统一的 Agent 创建接口
  */
-import { createAgent, initChatModel } from 'langchain';
+import { createAgent } from 'langchain';
 import { AgentConfig, UnionTool } from './types.js';
 import { ConsensusAnnotation } from './consensus-state.js';
 import { toolRegistry } from './tools/index.js';
+import { initChatModel } from '../utils/initChatModel.js';
 
 /**
  * 创建标准化 Agent 实例
@@ -15,13 +16,13 @@ export async function createStandardAgent(
     extraConfig?: {
         tools?: UnionTool[];
         task_id?: string;
+        passThroughKeys?: string[];
     },
 ) {
     // 初始化聊天模型
     const chatModel = await initChatModel(config.model.model, {
         modelProvider: config.model.provider,
         temperature: config.model.temperature,
-        maxTokens: config.model.maxTokens,
         streamUsage: true,
         enableThinking: config.model.enableThinking ?? true,
     });
@@ -39,6 +40,7 @@ export async function createStandardAgent(
 
     // 构建 LangChain Agent
     const agent = createAgent({
+        name: extraConfig.task_id ? 'subagent_' + extraConfig.task_id : undefined,
         model: chatModel,
         tools,
         systemPrompt: buildSystemPrompt(config),
