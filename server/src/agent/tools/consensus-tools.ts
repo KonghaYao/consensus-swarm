@@ -119,10 +119,31 @@ export function createDissentingAgentsTool(state: ConsensusStateType) {
  * 请求所有参会 Agent 进行投票
  */
 export function createVotingTool(state: ConsensusStateType) {
-    const askEveryoneToVoteSchema = z.object({}).describe('无需参数');
+    const askEveryoneToVoteSchema = z
+        .object({
+            proposal: z
+                .string()
+                .optional()
+                .describe('本次投票的提案内容或主题说明（可选，建议提供以让参与者更清楚投票目的）'),
+        })
+        .describe('投票参数');
 
     const askEveryoneToVoteTool = tool(
-        async () => {
+        async (input) => {
+            const { proposal } = input;
+
+            // 检查投票轮数上限
+            const currentVoteCount = (state.voteCount || 0) + 1;
+            const MAX_VOTING_ROUNDS = 5;
+
+            if (currentVoteCount > MAX_VOTING_ROUNDS) {
+                return {
+                    voteLimitReached: true,
+                    currentVoteCount,
+                    maxRounds: MAX_VOTING_ROUNDS,
+                    message: `已达到最大投票轮数限制（${MAX_VOTING_ROUNDS} 轮），会议无法达成共识。请输出分歧报告并结束会议。`,
+                };
+            }
             // 创建所有 Agent 实例
             const allAgents = await Promise.all(
                 state.agentConfigs.map((agentConfig) => {
@@ -142,10 +163,15 @@ export function createVotingTool(state: ConsensusStateType) {
                 `现在进入投票阶段。
 请基于之前的讨论内容，决定你是否同意当前提案。
 
+**投票主题：**${proposal || '基于前述讨论内容'}
+
 **重要：只有所有人都投赞成票（100%同意）才能结束会议。**
 
-不需要回复理由，请直接回复格式进行投票：
-<vote>yes</vote> 或 <vote>no</vote>`,
+请直接回复下面格式进行投票：
+
+<vote>yes</vote> 或 <vote>no</vote>
+
+可以附加 20 字的理由`,
             );
 
             // 并发调用所有 Agent 进行投票
@@ -186,16 +212,27 @@ export function createVotingTool(state: ConsensusStateType) {
             // 获取分歧者
             const dissentingAgents = voteRecords.filter((v) => !v.agree).map((v) => v.agentId);
 
+            // 生成投票明细（更易读的格式）
+            const voteBreakdown = voteRecords.map((record) => ({
+                agent: record.agentName,
+                vote: record.agree ? '赞成' : '反对',
+                reason: record.reason || '无理由',
+            }));
+
             // 返回投票结果摘要
             return {
+                voteRound: currentVoteCount,
                 totalVotes: totalCount,
                 yesVotes: yesCount,
                 noVotes: totalCount - yesCount,
                 agreementRatio,
                 consensusReached,
                 voteRecords,
+                voteBreakdown,
                 dissentingAgents,
                 needsFollowUp: dissentingAgents.length > 0,
+                voteLimitReached: false,
+                maxRounds: MAX_VOTING_ROUNDS,
             };
         },
         {
@@ -211,32 +248,45 @@ export function createVotingTool(state: ConsensusStateType) {
 - 统计投票结果，判断是否达成 100% 共识
 
 ## 输入参数
-无需参数（自动向所有参会 Agent 发起投票）
+- proposal（可选）: 本次投票的提案内容或主题说明
+  - 建议提供清晰的提案描述，让参与者了解具体在投票什么
+  - 例如："采用方案A作为最终方案"、"批准该功能开发"等
+  - 如果不提供，将使用"基于前述讨论内容"作为默认主题
 
 ## 返回结果
 返回一个包含以下字段的对象：
+- voteRound: 当前投票轮数（从 1 开始）
 - totalVotes: 总投票数
 - yesVotes: 赞成票数
 - noVotes: 反对票数
 - agreementRatio: 同意比例 (0-1)
 - consensusReached: 是否达成共识（布尔值，100% 同意时为 true）
-- voteRecords: 每位 Agent 的详细投票记录
+- voteRecords: 每位 Agent 的详细投票记录（内部格式）
+- **voteBreakdown**: 投票明细（易读格式），包含每个 Agent 的投票情况：
+  - agent: Agent 名称
+  - vote: 投票结果（"赞成" 或 "反对"）
+  - reason: 投票理由
 - dissentingAgents: 投反对票的 Agent ID 列表
 - needsFollowUp: 是否需要后续处理（有反对票时为 true）
+- voteLimitReached: 是否达到投票轮数上限（达到 5 轮时为 true）
+- maxRounds: 最大投票轮数限制（默认为 5）
 
 ## 决策流程
 根据返回结果：
-1. 如果 consensusReached = true：直接进入总结阶段，会议结束
-2. 如果 consensusReached = false：
-   - 使用 dissentingAgents 参数调用 ask_dissenting_agents_to_speak
+1. 如果 voteLimitReached = true：已达到最大投票轮数（5 轮），无法达成共识。请输出分歧报告并结束会议。
+2. 如果 consensusReached = true：直接进入总结阶段，会议结束
+3. 如果 consensusReached = false：
+   - 检查 voteRound，如果接近上限（比如已经是第 4 轮），提醒参与者需要尽快达成共识
+   - 使用 ask_*_speak 工具邀请反对者依次发言（从 dissentingAgents 获取）
    - 让支持者回应分歧者的观点
    - 重新调用 ask_everyone_to_vote 进行新一轮投票
-   - 重复此过程直到达成 100% 共识
 
 ## 重要提示
 - 只有当 consensusReached=true 时才能结束会议
 - 任何一票反对都会导致 consensusReached=false
-- 不限制投票次数，持续讨论直到达成共识`,
+- 最多进行 5 轮投票，超过后必须输出分歧报告并结束会议
+- 如果无法达成共识，在分歧报告中详细记录各方的观点和无法调和的分歧点
+- 使用 voteBreakdown 字段向用户展示每个 Agent 的投票情况`,
             schema: askEveryoneToVoteSchema,
         },
     );

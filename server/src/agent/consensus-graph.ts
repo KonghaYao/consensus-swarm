@@ -7,7 +7,7 @@
 import { START, StateGraph } from '@langchain/langgraph';
 import { ConsensusAnnotation, ConsensusStateType } from './consensus-state.js';
 import { createStandardAgent } from './standard-agent.js';
-import { createDissentingAgentsTool, createVotingTool } from './tools/consensus-tools.js';
+import { createVotingTool } from './tools/consensus-tools.js';
 import { ask_subagents } from '../utils/ask-agents.js';
 import { masterAgentConfig } from '../config/master-agent.js';
 
@@ -35,7 +35,7 @@ async function consensusAgentFunction(state: ConsensusStateType): Promise<Partia
                     name: `ask_${participantConfig.role.id}_speak`,
                     description: participantConfig.role.description,
                     passThroughKeys: [],
-                    messageFilter: 'discussion',
+                    messageFilter: 'discussion_with_replies',
                     submitInnerMessage(taskStore) {
                         return Object.assign(globalTaskStore, taskStore);
                     },
@@ -44,12 +44,11 @@ async function consensusAgentFunction(state: ConsensusStateType): Promise<Partia
         });
 
     // 创建投票工具
-    const askDissentingAgentsTool = createDissentingAgentsTool(state);
     const askEveryoneToVoteTool = createVotingTool(state);
 
     // 创建带完整工具集的 Agent
     const agent = await createStandardAgent(masterAgentConfig, {
-        tools: [...agentsAsTools, askDissentingAgentsTool, askEveryoneToVoteTool],
+        tools: [...agentsAsTools, askEveryoneToVoteTool],
     });
 
     // 调用 agent 处理当前状态
