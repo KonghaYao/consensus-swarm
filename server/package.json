@@ -4,7 +4,9 @@
     "description": "",
     "main": "index.js",
     "scripts": {
-        "dev": "bun run src/index.ts"
+        "dev": "bun run src/index.ts",
+        "build": "tsc",
+        "type-check": "tsc --noEmit"
     },
     "dependencies": {
         "@anthropic-ai/sdk": "^0.71.2",

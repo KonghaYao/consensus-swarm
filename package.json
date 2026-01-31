@@ -5,8 +5,18 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "dev:server": "bun run ./server/src/index.ts",
-        "dev:fe": ""
+        "dev": "pnpm -r dev",
+        "dev:server": "pnpm --filter server dev",
+        "dev:frontend": "pnpm --filter frontend dev",
+        "dev:all": "pnpm dev:server & pnpm dev:frontend",
+        "build": "pnpm -r build",
+        "build:server": "pnpm --filter server build",
+        "build:frontend": "pnpm --filter frontend build",
+        "type-check": "pnpm -r exec tsc --noEmit",
+        "type-check:server": "pnpm --filter server exec tsc --noEmit",
+        "type-check:frontend": "pnpm --filter frontend exec tsc --noEmit",
+        "test": "vitest",
+        "preview": "pnpm --filter frontend preview"
     },
     "dependencies": {
         "uuid": "^13.0.0",
