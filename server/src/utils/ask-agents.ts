@@ -39,6 +39,7 @@ export const ask_subagents = (
          * - 'user': 只传递用户的消息
          */
         messageFilter?: 'all' | 'discussion' | 'user';
+        submitInnerMessage?: (task_store: Record<string, any>) => void;
     },
 ) =>
     tool(
@@ -91,7 +92,9 @@ export const ask_subagents = (
                     update[key] = new_state[key];
                 }
             });
-
+            options?.submitInnerMessage({
+                [taskId]: new_state,
+            });
             return new Command({
                 update,
             });

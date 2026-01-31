@@ -20,6 +20,7 @@ import { masterAgentConfig } from '../config/master-agent.js';
  * - 逻辑清晰，职责分离
  */
 async function consensusAgentFunction(state: ConsensusStateType): Promise<Partial<ConsensusStateType>> {
+    const globalTaskStore = state.task_store;
     // 创建参与者工具
     const agentsAsTools = state.agentConfigs.map((participantConfig) => {
         return ask_subagents(
@@ -33,6 +34,9 @@ async function consensusAgentFunction(state: ConsensusStateType): Promise<Partia
                 description: participantConfig.role.description,
                 passThroughKeys: [],
                 messageFilter: 'discussion',
+                submitInnerMessage(taskStore) {
+                    return Object.assign(globalTaskStore, taskStore);
+                },
             },
         );
     });
@@ -44,15 +48,6 @@ async function consensusAgentFunction(state: ConsensusStateType): Promise<Partia
     // 创建带完整工具集的 Agent
     const agent = await createStandardAgent(masterAgentConfig, {
         tools: [...agentsAsTools, askDissentingAgentsTool, askEveryoneToVoteTool],
-        passThroughKeys: [
-            'topic',
-            'context',
-            'agentConfigs',
-            'currentRound',
-            'maxRounds',
-            'consensusThreshold',
-            'rounds',
-        ],
     });
 
     // 调用 agent 处理当前状态
@@ -60,6 +55,7 @@ async function consensusAgentFunction(state: ConsensusStateType): Promise<Partia
 
     return {
         ...newState,
+        task_store: globalTaskStore,
     };
 }
 

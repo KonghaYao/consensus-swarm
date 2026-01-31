@@ -139,30 +139,27 @@ export function MeetingInitForm({ agents, onSubmit }: MeetingInitFormProps) {
   const [selectedAgents, setSelectedAgents] = useState<string[]>(() => {
     const defaultAgents = [masterAgentId];
     const suggestedAgents = ['technical-director', 'product-manager', 'team-lead'];
-    suggestedAgents.forEach(id => {
-      if (agents.find(a => a.id === id)) {
+    suggestedAgents.forEach((id) => {
+      if (agents.find((a) => a.id === id)) {
         defaultAgents.push(id);
       }
     });
     return defaultAgents;
   });
 
-  const handleToggleAgent = React.useCallback((agentId: string) => {
-    // 主持人不能取消
-    if (agentId === masterAgentId) return;
+  const handleToggleAgent = React.useCallback(
+    (agentId: string) => {
+      // 主持人不能取消
+      if (agentId === masterAgentId) return;
 
-    setSelectedAgents((prev) =>
-      prev.includes(agentId)
-        ? prev.filter((id) => id !== agentId)
-        : [...prev, agentId]
-    );
-  }, [masterAgentId]);
+      setSelectedAgents((prev) => (prev.includes(agentId) ? prev.filter((id) => id !== agentId) : [...prev, agentId]));
+    },
+    [masterAgentId],
+  );
 
   const handleSelectAll = () => {
-    const nonMasterAgents = agents.filter(a => a.id !== masterAgentId);
-    const allNonMasterSelected = nonMasterAgents.every(a =>
-      selectedAgents.includes(a.id)
-    );
+    const nonMasterAgents = agents.filter((a) => a.id !== masterAgentId);
+    const allNonMasterSelected = nonMasterAgents.every((a) => selectedAgents.includes(a.id));
 
     if (allNonMasterSelected) {
       // 只保留主持人
@@ -203,9 +200,7 @@ export function MeetingInitForm({ agents, onSubmit }: MeetingInitFormProps) {
             <Users className="w-8 h-8 text-primary" />
           </div>
           <h1 className="text-3xl font-bold mb-2">开始新的共识会议</h1>
-          <p className="text-muted-foreground">
-            设置会议主题，选择参会人员，让 AI Agents 达成共识
-          </p>
+          <p className="text-muted-foreground">设置会议主题，选择参会人员，让 AI Agents 达成共识</p>
         </div>
 
         {/* 表单 */}
@@ -217,13 +212,7 @@ export function MeetingInitForm({ agents, onSubmit }: MeetingInitFormProps) {
                 <Target className="w-4 h-4" />
                 会议主题 *
               </Label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleRandomTemplate}
-                className="gap-1"
-              >
+              <Button type="button" variant="outline" size="sm" onClick={handleRandomTemplate} className="gap-1">
                 <Shuffle className="w-3 h-3" />
                 随机示例
               </Button>
@@ -253,9 +242,7 @@ export function MeetingInitForm({ agents, onSubmit }: MeetingInitFormProps) {
               placeholder="提供相关背景信息、约束条件、参考材料等..."
               rows={4}
             />
-            <p className="text-sm text-muted-foreground">
-              详细的背景信息有助于 Agents 更好地理解问题
-            </p>
+            <p className="text-sm text-muted-foreground">详细的背景信息有助于 Agents 更好地理解问题</p>
           </div>
 
           {/* 参会人员 */}
@@ -265,12 +252,7 @@ export function MeetingInitForm({ agents, onSubmit }: MeetingInitFormProps) {
                 <Users className="w-4 h-4" />
                 参会人员 * ({selectedAgents.length} 已选择)
               </Label>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={handleSelectAll}
-              >
+              <Button type="button" variant="ghost" size="sm" onClick={handleSelectAll}>
                 选择全部
               </Button>
             </div>
@@ -285,10 +267,7 @@ export function MeetingInitForm({ agents, onSubmit }: MeetingInitFormProps) {
                     key={agent.id}
                     className={`
                       p-4 rounded-lg border-2 transition-all relative
-                      ${isSelected
-                        ? 'border-primary bg-primary/5'
-                        : 'border-gray-200 hover:border-gray-300'
-                      }
+                      ${isSelected ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'}
                       ${isMaster ? 'border-amber-400 bg-amber-50/50' : ''}
                     `}
                   >
@@ -332,12 +311,8 @@ export function MeetingInitForm({ agents, onSubmit }: MeetingInitFormProps) {
                             {agent.model.provider}
                           </Badge>
                         </div>
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {agent.role.description}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          视角: {agent.role.perspective}
-                        </p>
+                        <p className="text-sm text-muted-foreground line-clamp-2">{agent.role.description}</p>
+                        <p className="text-xs text-gray-500 mt-1">视角: {agent.role.perspective}</p>
                       </div>
                     </div>
                   </div>
@@ -345,18 +320,11 @@ export function MeetingInitForm({ agents, onSubmit }: MeetingInitFormProps) {
               })}
             </div>
 
-            <p className="text-xs text-muted-foreground">
-              主持人是会议的必需参与者，其他人员可根据需要选择
-            </p>
+            <p className="text-xs text-muted-foreground">主持人是会议的必需参与者，其他人员可根据需要选择</p>
           </div>
 
           {/* 提交按钮 */}
-          <Button
-            type="submit"
-            size="lg"
-            className="w-full"
-            disabled={!isValid}
-          >
+          <Button type="submit" size="lg" className="w-full" disabled={!isValid}>
             开始会议
           </Button>
         </form>
@@ -365,8 +333,8 @@ export function MeetingInitForm({ agents, onSubmit }: MeetingInitFormProps) {
         <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
           <p className="text-sm text-blue-900 dark:text-blue-100">
             <strong>会议流程：</strong>
-            主持人将协调所有选中的 Agents 进行讨论、投票，直到达成共识或达到最大轮次限制。
-            所有参与者必须 100% 同意才能结束会议。
+            主持人将协调所有选中的 Agents 进行讨论、投票，直到达成共识或达到最大轮次限制。 所有参与者必须 100%
+            同意才能结束会议。
           </p>
         </div>
       </div>

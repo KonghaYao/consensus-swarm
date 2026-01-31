@@ -28,11 +28,119 @@ export interface AgentConfig {
 /**
  * 生成 agent 的头像 URL（使用 DiceBear API）
  */
-function generateAvatarUrl(agentId: string, agentName: string): string {
+export function generateAvatarUrl(agentId: string, agentName?: string): string {
   // 使用 notionists 风格（简笔画风格，类似 Notion 插图）
   // seed 使用 agent id 确保每次生成的头像一致
   return `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(agentId)}`;
 }
+
+// API base URL
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8123';
+
+/**
+ * API response wrapper
+ */
+interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+/**
+ * Fetch wrapper with error handling
+ */
+async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}/api/agents${endpoint}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options?.headers,
+    },
+  });
+
+  if (!response.ok) {
+    const error: ApiResponse<never> = await response.json();
+    throw new Error(error.error || 'API request failed');
+  }
+
+  const result: ApiResponse<T> = await response.json();
+  if (!result.success || !result.data) {
+    throw new Error(result.error || 'API request failed');
+  }
+
+  return result.data;
+}
+
+// ============================================
+// Async API-based CRUD operations (NEW)
+// ============================================
+
+/**
+ * Get all agents from API
+ */
+export async function getAgentsAsync(): Promise<AgentConfig[]> {
+  return fetchAPI<AgentConfig[]>('', { method: 'GET' });
+}
+
+/**
+ * Get single agent by ID from API
+ */
+export async function getAgentByIdAsync(id: string): Promise<AgentConfig | null> {
+  try {
+    return await fetchAPI<AgentConfig>(`/${id}`, { method: 'GET' });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Create new agent via API
+ */
+export async function createAgentAsync(agent: Omit<AgentConfig, 'id'>): Promise<AgentConfig> {
+  return fetchAPI<AgentConfig>('', {
+    method: 'POST',
+    body: JSON.stringify(agent),
+  });
+}
+
+/**
+ * Update agent via API
+ */
+export async function updateAgentAsync(id: string, updates: Partial<AgentConfig>): Promise<AgentConfig | null> {
+  try {
+    return await fetchAPI<AgentConfig>(`/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Delete agent via API
+ */
+export async function deleteAgentAsync(id: string): Promise<boolean> {
+  try {
+    await fetchAPI<{ id: string }>(`/${id}`, { method: 'DELETE' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Reset agents to defaults via API
+ */
+export async function resetAgentsAsync(): Promise<AgentConfig[]> {
+  return fetchAPI<AgentConfig[]>('/reset', { method: 'POST' });
+}
+
+// ============================================
+// Legacy sync operations (DEPRECATED)
+// These are kept for backward compatibility
+// but will be removed in future versions
+// ============================================
 
 // Initial data from backend config files (mirrored)
 const masterAgentConfig: AgentConfig = {
@@ -202,27 +310,37 @@ const subAgentConfigs: AgentConfig[] = [
 ];
 
 // Initial data from backend config files
-const initialAgents: AgentConfig[] = [
-  masterAgentConfig,
-  ...subAgentConfigs,
-];
+const initialAgents: AgentConfig[] = [masterAgentConfig, ...subAgentConfigs];
 
 // In-memory state
 let agents: AgentConfig[] = [...initialAgents];
 
-// CRUD operations
+// Deprecated: Use getAgentsAsync() instead
+/** @deprecated Use getAgentsAsync() instead */
 export function getAgents(): AgentConfig[] {
   return agents;
 }
 
+// Deprecated: Use getAgentByIdAsync() instead
+/** @deprecated Use getAgentByIdAsync() instead */
 export function getAgentById(id: string): AgentConfig | undefined {
   return agents.find((agent) => agent.id === id);
 }
 
+// Deprecated: Use getAgentByIdAsync() instead
+/** @deprecated Use getAgentByIdAsync() instead */
 export function getAgentByName(name: string): AgentConfig | undefined {
   return agents.find((agent) => agent.role.name === name);
 }
 
+// Deprecated: Use getAgentByIdAsync() instead
+/** @deprecated Use getAgentByIdAsync() instead */
+export function getAgentByRoleId(id: string): AgentConfig | undefined {
+  return agents.find((agent) => agent.role.id === id);
+}
+
+// Deprecated: Use createAgentAsync() instead
+/** @deprecated Use createAgentAsync() instead */
 export function createAgent(agent: Omit<AgentConfig, 'id'>): AgentConfig {
   const newAgent: AgentConfig = {
     ...agent,
@@ -232,6 +350,8 @@ export function createAgent(agent: Omit<AgentConfig, 'id'>): AgentConfig {
   return newAgent;
 }
 
+// Deprecated: Use updateAgentAsync() instead
+/** @deprecated Use updateAgentAsync() instead */
 export function updateAgent(id: string, updates: Partial<AgentConfig>): AgentConfig | null {
   const index = agents.findIndex((agent) => agent.id === id);
   if (index === -1) return null;
@@ -240,12 +360,16 @@ export function updateAgent(id: string, updates: Partial<AgentConfig>): AgentCon
   return agents[index];
 }
 
+// Deprecated: Use deleteAgentAsync() instead
+/** @deprecated Use deleteAgentAsync() instead */
 export function deleteAgent(id: string): boolean {
   const initialLength = agents.length;
   agents = agents.filter((agent) => agent.id !== id);
   return agents.length < initialLength;
 }
 
+// Deprecated: Use resetAgentsAsync() instead
+/** @deprecated Use resetAgentsAsync() instead */
 export function resetAgents(): void {
   agents = [...initialAgents];
 }
