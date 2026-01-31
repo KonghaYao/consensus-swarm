@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  consensus:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: consensus-app
+    ports:
+      - "8123:8123"
+    environment:
+      # API Keys (required)
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-}
+
+      # Optional: Use PostgreSQL instead of SQLite
+      # - DATABASE_URL=${DATABASE_URL}
+      # - DATABASE_NAME=${DATABASE_NAME}
+
+      # SQLite database path (default)
+      - SQLITE_DATABASE_URL=/app/.langgraph_api/langgraph.db
+
+      # Node environment
+      - NODE_ENV=production
+    volumes:
+      # Persist SQLite database
+      - consensus-data:/app/.langgraph_api
+
+      # Optional: Mount frontend dist for development
+      # - ./frontend/dist:/app/frontend/dist:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/api/langgraph/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  consensus-data:
+    driver: local

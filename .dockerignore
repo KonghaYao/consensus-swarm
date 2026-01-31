@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+server/node_modules/
+.pnpm-store/
+
+# Build outputs (will be generated during Docker build)
+server/dist/
+frontend/dist/
+*.log
+
+# Environment files (use docker-compose environment instead)
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+README.md
+CLAUDE.md
+*.md
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Testing
+coverage/
+.nyc_output/
+*.test.ts
+*.spec.ts
+
+# Misc
+.cache/
+.temp/
+tmp/
+*.tsbuildinfo
