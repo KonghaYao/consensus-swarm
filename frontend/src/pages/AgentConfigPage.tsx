@@ -5,27 +5,19 @@ import {
   resetAgentsAsync,
   type AgentConfig,
 } from '@/lib/agent-data-service';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { AgentConfigDialog } from '@/components/agent-config';
-import { Pencil, Trash2, Plus, RotateCcw } from 'lucide-react';
+import { AgentCard } from '@/components/agent-config/AgentCard';
+import { AgentConfigForm } from '@/components/agent-config/AgentConfigForm';
+import { Plus, RotateCcw, X } from 'lucide-react';
 import { AppShell } from '@/layouts/AppShell';
 import { AppShellHeader } from '@/layouts/AppShellHeader';
 
 export function AgentConfigPage() {
   const [agents, setAgents] = useState<AgentConfig[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [editingAgent, setEditingAgent] = useState<AgentConfig | null>(null);
   const [actionInProgress, setActionInProgress] = useState(false);
+  const [showForm, setShowForm] = useState(false);
 
   const loadAgents = useCallback(async () => {
     setLoading(true);
@@ -45,12 +37,23 @@ export function AgentConfigPage() {
 
   const handleAdd = () => {
     setEditingAgent(null);
-    setDialogOpen(true);
+    setShowForm(true);
   };
 
   const handleEdit = (agent: AgentConfig) => {
     setEditingAgent(agent);
-    setDialogOpen(true);
+    setShowForm(true);
+  };
+
+  const handleFormCancel = () => {
+    setShowForm(false);
+    setEditingAgent(null);
+  };
+
+  const handleFormSave = () => {
+    setShowForm(false);
+    setEditingAgent(null);
+    loadAgents();
   };
 
   const handleDelete = async (id: string) => {
@@ -85,13 +88,6 @@ export function AgentConfigPage() {
     }
   };
 
-  const handleDialogClose = () => {
-    setDialogOpen(false);
-    setEditingAgent(null);
-    // Reload agents after dialog closes (in case of changes)
-    loadAgents();
-  };
-
   return (
     <AppShell
       header={
@@ -99,92 +95,72 @@ export function AgentConfigPage() {
           title="Agent 配置"
           description="管理 AI Agent 的角色和行为"
           actions={
-            <>
-              <Button variant="outline" onClick={handleReset} disabled={actionInProgress}>
-                <RotateCcw className="w-4 h-4 mr-2" />
-                重置为默认
+            !showForm ? (
+              <>
+                <Button variant="outline" onClick={handleReset} disabled={actionInProgress}>
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  重置为默认
+                </Button>
+                <Button onClick={handleAdd}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  添加 Agent
+                </Button>
+              </>
+            ) : (
+              <Button variant="outline" onClick={handleFormCancel}>
+                <X className="w-4 h-4 mr-2" />
+                关闭
               </Button>
-              <Button onClick={handleAdd}>
-                <Plus className="w-4 h-4 mr-2" />
-                添加 Agent
-              </Button>
-            </>
+            )
           }
         />
       }
     >
-      <div className="container mx-auto p-6">
-        {loading ? (
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
-            <p className="text-muted-foreground">加载 Agents 配置...</p>
-          </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Role Name</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Model</TableHead>
-                <TableHead>Tools</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+      <div className="flex h-full">
+        {/* 左侧内容区 */}
+        <div className="flex-1 p-6 transition-all duration-300">
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+              <p className="text-muted-foreground">加载 Agents 配置...</p>
+            </div>
+          ) : agents.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                <Plus className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">暂无 Agent 配置</h3>
+              <p className="text-sm text-muted-foreground">点击右上角"添加 Agent"开始创建</p>
+            </div>
+          ) : (
+            <div className={`grid gap-4 lg:gap-6 ${
+              showForm
+                ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'
+                : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7'
+            }`}>
               {agents.map((agent) => (
-                <TableRow key={agent.id}>
-                  <TableCell className="font-mono text-sm">{agent.id}</TableCell>
-                  <TableCell className="font-medium">{agent.role.name}</TableCell>
-                  <TableCell className="text-sm text-gray-600 max-w-xs truncate">
-                    {agent.role.description}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">
-                      {agent.model.provider}/{agent.model.model}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {Object.entries(agent.tools)
-                      .filter(([, enabled]) => enabled)
-                      .map(([tool]) => (
-                        <Badge key={tool} variant="secondary" className="mr-1">
-                          {tool}
-                        </Badge>
-                      ))}
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleEdit(agent)}
-                      title="Edit"
-                      disabled={actionInProgress}
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-red-600"
-                      onClick={() => handleDelete(agent.id)}
-                      title="Delete"
-                      disabled={actionInProgress}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
+                <AgentCard
+                  key={agent.id}
+                  agent={agent}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  actionInProgress={actionInProgress}
+                />
               ))}
-            </TableBody>
-          </Table>
-        )}
+            </div>
+          )}
+        </div>
 
-        <AgentConfigDialog
-          open={dialogOpen}
-          onOpenChange={handleDialogClose}
-          agent={editingAgent}
-        />
+        {/* 右侧配置栏 */}
+        {showForm && (
+          <div className="w-full sm:w-96 border-l bg-background p-6 overflow-y-auto">
+            <AgentConfigForm
+              agent={editingAgent}
+              onSave={handleFormSave}
+              onCancel={handleFormCancel}
+            />
+          </div>
+        )}
       </div>
     </AppShell>
   );

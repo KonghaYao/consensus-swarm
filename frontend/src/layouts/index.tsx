@@ -14,7 +14,7 @@ export interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({ className = '' }) => {
   return (
-    <div className={`flex h-screen bg-gray-50 ${className}`}>
+    <div className={`flex h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 ${className}`}>
       {/* 左侧导航边栏 */}
       <Sidebar />
 
