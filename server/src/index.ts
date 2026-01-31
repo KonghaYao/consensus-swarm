@@ -3,7 +3,7 @@
  * 使用新的 @codegraph/agent 包
  */
 
-import { graph } from './agent/graph.js';
+import { consensusGraph } from './agent/consensus-graph.js';
 import LGApp from '@langgraph-js/pure-graph/dist/adapter/hono';
 import { logger } from 'hono/logger';
 
@@ -11,7 +11,7 @@ import { logger } from 'hono/logger';
 import { registerGraph } from '@langgraph-js/pure-graph';
 import { Hono } from 'hono';
 
-registerGraph('code', graph);
+registerGraph('consensusGraph', consensusGraph);
 
 const app = new Hono()
 
