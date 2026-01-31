@@ -22,24 +22,26 @@ import { masterAgentConfig } from '../config/master-agent.js';
 async function consensusAgentFunction(state: ConsensusStateType): Promise<Partial<ConsensusStateType>> {
     const globalTaskStore = state.task_store;
     // 创建参与者工具
-    const agentsAsTools = state.agentConfigs.map((participantConfig) => {
-        return ask_subagents(
-            (taskId, args, parent_state: any) => {
-                return createStandardAgent(participantConfig, {
-                    taskId: taskId,
-                });
-            },
-            {
-                name: `ask_${participantConfig.role.id}_speak`,
-                description: participantConfig.role.description,
-                passThroughKeys: [],
-                messageFilter: 'discussion',
-                submitInnerMessage(taskStore) {
-                    return Object.assign(globalTaskStore, taskStore);
+    const agentsAsTools = state.agentConfigs
+        .filter((i) => i.id !== 'master')
+        .map((participantConfig) => {
+            return ask_subagents(
+                (taskId, args, parent_state: any) => {
+                    return createStandardAgent(participantConfig, {
+                        taskId: taskId,
+                    });
                 },
-            },
-        );
-    });
+                {
+                    name: `ask_${participantConfig.role.id}_speak`,
+                    description: participantConfig.role.description,
+                    passThroughKeys: [],
+                    messageFilter: 'discussion',
+                    submitInnerMessage(taskStore) {
+                        return Object.assign(globalTaskStore, taskStore);
+                    },
+                },
+            );
+        });
 
     // 创建投票工具
     const askDissentingAgentsTool = createDissentingAgentsTool(state);

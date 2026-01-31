@@ -37,7 +37,11 @@ export function ToolMessage({ message }: ToolMessageProps) {
         <div className="flex items-center gap-2">
           <div className="text-sm text-foreground">{agentName}</div>
         </div>
-        {lastMessage ? <BotMessage message={lastMessage} noHeader></BotMessage> : null}
+        {lastMessage ? (
+          <div className="max-h-60 overflow-y-auto pr-2">
+            <BotMessage message={lastMessage} noHeader></BotMessage>
+          </div>
+        ) : null}
         {hasSubmessages && (
           <div className="pt-1">
             <Badge
