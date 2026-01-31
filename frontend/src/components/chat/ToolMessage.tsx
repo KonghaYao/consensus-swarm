@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { Avatar } from './Avatar';
 import type { RenderMessage } from '@langgraph-js/sdk';
@@ -25,6 +25,15 @@ export function ToolMessage({ message }: ToolMessageProps) {
   const submessages = message.sub_messages;
   const hasSubmessages = submessages && submessages.length > 0;
 
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // 当消息内容变化时，自动滚动到底部
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    }
+  }, [lastMessage]);
+
   const handleBadgeClick = () => {
     if (hasSubmessages) {
       openDrawer(submessages, agentName, avatarSrc);
@@ -38,7 +47,7 @@ export function ToolMessage({ message }: ToolMessageProps) {
           <div className="text-sm text-foreground">{agentName}</div>
         </div>
         {lastMessage ? (
-          <div className="max-h-60 overflow-y-auto pr-2">
+          <div ref={scrollContainerRef} className="max-h-60 overflow-y-auto p-2 border border-gray-100 rounded-2xl">
             <BotMessage message={lastMessage} noHeader></BotMessage>
           </div>
         ) : null}

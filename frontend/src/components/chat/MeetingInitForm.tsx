@@ -2,14 +2,14 @@
  * MeetingInitForm - 会议初始化表单
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Users, Calendar, Target, Crown, Shuffle } from 'lucide-react';
+import { Users, Calendar, Target, Crown, Shuffle, Loader2, CheckCircle2 } from 'lucide-react';
 import type { AgentConfig } from '@/lib/agent-data-service';
 
 interface MeetingInitFormProps {
@@ -131,6 +131,8 @@ C. 试点运行 3 个月后再评估`,
 export function MeetingInitForm({ agents, onSubmit }: MeetingInitFormProps) {
   const [topic, setTopic] = useState('');
   const [context, setContext] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showErrors, setShowErrors] = useState(false);
 
   // 主持人 agent ID
   const masterAgentId = 'master';
@@ -146,6 +148,21 @@ export function MeetingInitForm({ agents, onSubmit }: MeetingInitFormProps) {
     });
     return defaultAgents;
   });
+
+  // Warn before navigation with unsaved changes
+  useEffect(() => {
+    const hasChanges = topic.trim().length > 0 || context.trim().length > 0;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [topic, context]);
 
   const handleToggleAgent = React.useCallback(
     (agentId: string) => {
@@ -177,16 +194,32 @@ export function MeetingInitForm({ agents, onSubmit }: MeetingInitFormProps) {
     setContext(template.context);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!topic.trim()) return;
-    if (selectedAgents.length === 0) return;
 
-    onSubmit({
-      topic: topic.trim(),
-      context: context.trim(),
-      selectedAgents,
-    });
+    // Show errors and validate
+    setShowErrors(true);
+
+    if (!topic.trim()) {
+      // Focus first error
+      const topicInput = document.getElementById('topic') as HTMLInputElement;
+      topicInput?.focus();
+      return;
+    }
+
+    if (selectedAgents.length === 0) return;
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      await onSubmit({
+        topic: topic.trim(),
+        context: context.trim(),
+        selectedAgents: selectedAgents.filter((i) => i !== 'master'),
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const isValid = topic.trim() && selectedAgents.length > 0;
@@ -199,7 +232,7 @@ export function MeetingInitForm({ agents, onSubmit }: MeetingInitFormProps) {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
             <Users className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold mb-2">开始新的共识会议</h1>
+          <h1 className="text-3xl font-bold mb-2 text-wrap-balance">开始新的共识会议</h1>
           <p className="text-muted-foreground">设置会议主题，选择参会人员，让 AI Agents 达成共识</p>
         </div>
 
@@ -219,11 +252,21 @@ export function MeetingInitForm({ agents, onSubmit }: MeetingInitFormProps) {
             </div>
             <Input
               id="topic"
+              name="topic"
+              type="text"
+              autoComplete="off"
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
               placeholder="例如：是否应该采用微服务架构？"
               className="text-lg"
+              aria-invalid={topic.trim().length === 0 && showErrors ? 'true' : 'false'}
+              aria-describedby="topic-error"
             />
+            {topic.trim().length === 0 && showErrors && (
+              <p id="topic-error" className="text-sm text-red-500" role="alert">
+                请输入会议主题
+              </p>
+            )}
             <p className="text-sm text-muted-foreground">
               清晰描述需要讨论和达成共识的核心议题，或点击"随机示例"快速开始
             </p>
@@ -237,9 +280,11 @@ export function MeetingInitForm({ agents, onSubmit }: MeetingInitFormProps) {
             </Label>
             <Textarea
               id="context"
+              name="context"
+              autoComplete="off"
               value={context}
               onChange={(e) => setContext(e.target.value)}
-              placeholder="提供相关背景信息、约束条件、参考材料等..."
+              placeholder="提供相关背景信息、约束条件、参考材料等…"
               rows={4}
             />
             <p className="text-sm text-muted-foreground">详细的背景信息有助于 Agents 更好地理解问题</p>
@@ -266,11 +311,22 @@ export function MeetingInitForm({ agents, onSubmit }: MeetingInitFormProps) {
                   <div
                     key={agent.id}
                     className={`
-                      p-4 rounded-lg border-2 transition-all relative
-                      ${isSelected ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'}
+                      p-4 rounded-lg border-2 relative overflow-hidden
+                      transition-all duration-200 ease-in
+                      ${
+                        isSelected
+                          ? 'border-amber-500 shadow-md shadow-amber-100'
+                          : 'border-gray-100 hover:border-gray-200'
+                      }
                       ${isMaster ? 'border-amber-400 bg-amber-50/50' : ''}
                     `}
                   >
+                    {/* 选中状态指示器 */}
+                    {isSelected && !isMaster && (
+                      <div className="absolute top-3 right-3">
+                        <CheckCircle2 className="w-5 h-5 text-amber-500 animate-in fade-in zoom-in duration-200" />
+                      </div>
+                    )}
                     {/* 主持人标识 */}
                     {isMaster && (
                       <div className="absolute top-2 right-2">
@@ -281,40 +337,50 @@ export function MeetingInitForm({ agents, onSubmit }: MeetingInitFormProps) {
                       </div>
                     )}
 
-                    <div
+                    <label
+                      htmlFor={`agent-${agent.id}`}
                       className={`flex items-start gap-3 ${!isMaster ? 'cursor-pointer' : ''}`}
-                      onClick={() => !isMaster && handleToggleAgent(agent.id)}
                     >
-                      <div onClick={(e) => e.stopPropagation()}>
-                        <Checkbox
-                          checked={isSelected}
-                          disabled={isMaster}
-                          onCheckedChange={() => handleToggleAgent(agent.id)}
-                          className="mt-1"
-                        />
-                      </div>
+                      <Checkbox
+                        id={`agent-${agent.id}`}
+                        checked={isSelected}
+                        disabled={isMaster}
+                        onCheckedChange={() => handleToggleAgent(agent.id)}
+                        className="mt-1"
+                      />
                       {agent.avatar && (
-                        <img
-                          src={agent.avatar}
-                          alt={agent.role.name}
-                          className="w-10 h-10 rounded-full flex-shrink-0 bg-gray-100"
-                          loading="lazy"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none';
-                          }}
-                        />
+                        <div className="relative">
+                          <img
+                            src={agent.avatar}
+                            alt={agent.role.name}
+                            className={`
+                              w-10 h-10 rounded-full flex-shrink-0 bg-gray-100
+                              transition-all duration-200
+                              ${isSelected ? 'ring-2 ring-amber-500 ring-offset-2' : ''}
+                            `}
+                            loading="lazy"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                          {isSelected && (
+                            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-amber-500 rounded-full flex items-center justify-center">
+                              <CheckCircle2 className="w-2.5 h-2.5 text-white" />
+                            </div>
+                          )}
+                        </div>
                       )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-medium">{agent.role.name}</span>
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant={isSelected ? 'default' : 'outline'} className="text-xs">
                             {agent.model.provider}
                           </Badge>
                         </div>
                         <p className="text-sm text-muted-foreground line-clamp-2">{agent.role.description}</p>
                         <p className="text-xs text-gray-500 mt-1">视角: {agent.role.perspective}</p>
                       </div>
-                    </div>
+                    </label>
                   </div>
                 );
               })}
@@ -324,8 +390,15 @@ export function MeetingInitForm({ agents, onSubmit }: MeetingInitFormProps) {
           </div>
 
           {/* 提交按钮 */}
-          <Button type="submit" size="lg" className="w-full" disabled={!isValid}>
-            开始会议
+          <Button type="submit" size="lg" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                创建会议中…
+              </>
+            ) : (
+              '开始会议'
+            )}
           </Button>
         </form>
 

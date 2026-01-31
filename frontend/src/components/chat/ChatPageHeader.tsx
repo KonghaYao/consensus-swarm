@@ -29,72 +29,24 @@ export function ChatPageHeader({
   onAgentChange,
   showAgentSelector = true,
 }: ChatPageHeaderProps) {
-  const selectedAgent = agents.find(a => a.id === selectedAgentId);
+  const selectedAgent = agents.find((a) => a.id === selectedAgentId);
 
   return (
     <header className="h-14 border-b bg-white/80 backdrop-blur-sm">
       <div className="h-full px-4 flex items-center justify-between">
         {/* 左侧 - 当前 Agent */}
         <div className="flex items-center gap-3">
-          <div
-            className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center"
-            aria-hidden="true"
-          >
+          <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center" aria-hidden="true">
             <Bot className="w-4 h-4 text-white" />
           </div>
           <div>
-            <h1 className="text-sm font-semibold text-gray-900">
-              {selectedAgent?.role.name || 'Agent Chat'}
-            </h1>
-            <p className="text-xs text-gray-500">
-              {selectedAgent?.role.description || 'AI 助手对话'}
-            </p>
+            <h1 className="text-sm font-semibold text-gray-900">{'Agent Chat'}</h1>
+            <p className="text-xs text-gray-500">{'AI 助手对话'}</p>
           </div>
         </div>
 
         {/* 右侧 - 操作按钮 */}
         <nav className="flex items-center gap-2" aria-label="聊天操作">
-          {showAgentSelector && agents.length > 0 && onAgentChange && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-                  aria-haspopup="true"
-                  aria-expanded="false"
-                >
-                  <span>切换 Agent</span>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                {agents.map((agent) => (
-                  <DropdownMenuItem
-                    key={agent.id}
-                    onClick={() => onAgentChange(agent.id)}
-                    className={selectedAgentId === agent.id ? 'bg-accent' : ''}
-                    aria-current={selectedAgentId === agent.id ? 'true' : undefined}
-                  >
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-6 h-6 rounded bg-blue-600 flex items-center justify-center"
-                        aria-hidden="true"
-                      >
-                        <Bot className="w-3 h-3 text-white" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="text-sm font-medium">{agent.role.name}</div>
-                        <div className="text-xs text-muted-foreground">{agent.role.description}</div>
-                      </div>
-                    </div>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-
           <button
             type="button"
             onClick={onClear}
