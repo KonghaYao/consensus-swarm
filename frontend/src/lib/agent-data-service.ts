@@ -35,7 +35,8 @@ export function generateAvatarUrl(agentId: string, agentName?: string): string {
 }
 
 // API base URL
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8123';
+// 使用相对路径，开发环境通过 Vite proxy 转发，生产环境直接访问同源后端
+const API_BASE_URL = '';
 
 /**
  * API response wrapper
@@ -156,7 +157,7 @@ const masterAgentConfig: AgentConfig = {
     provider: 'openai',
     model: 'mimo-v2-flash',
     temperature: 0.7,
-    enableThinking: true,
+    enableThinking: false,
   },
   tools: {},
   avatar: generateAvatarUrl('master', '主持人'),

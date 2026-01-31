@@ -50,8 +50,8 @@ RUN npm install -g pnpm@10.24.0 && \
 # Copy built backend from builder
 COPY --from=builder /app/server/dist ./server/dist
 
-# Copy built frontend from builder
-COPY --from=builder /app/frontend/dist ./frontend/dist
+# Copy built frontend from builder to be served by backend
+COPY --from=builder /app/frontend/dist ./server/dist/frontend
 
 # Copy any configuration files
 COPY server/src/config ./server/src/config

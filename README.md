@@ -40,8 +40,8 @@ cp .env.example .env
 docker-compose up -d
 
 # 4. 访问应用
-# 前端: http://localhost:8123
-# 后端 API: http://localhost:8123/api
+# 前端 + 后端: http://localhost:8123
+# API 端点: http://localhost:8123/api/*
 ```
 
 #### Docker 命令
