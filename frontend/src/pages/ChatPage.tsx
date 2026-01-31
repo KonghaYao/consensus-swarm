@@ -16,6 +16,8 @@ import {
 } from '../components/chat';
 import DefaultTools from '../tools';
 import { getAgentsAsync, type AgentConfig } from '@/lib/agent-data-service';
+import { useSubmessagesDrawer } from '@/contexts/SubmessagesDrawerContext';
+import { cn } from '@/lib/utils';
 
 export function ChatPage() {
   const {
@@ -30,6 +32,7 @@ export function ChatPage() {
     toHistoryChat,
   } = useChat();
   const { extraParams } = useSettings();
+  const { open: submessagesOpen } = useSubmessagesDrawer();
 
   const [autoResize, setAutoResize] = useState(false);
   const [agents, setAgents] = useState<AgentConfig[]>([]);
@@ -180,7 +183,12 @@ ${data.context ? `背景信息：\n${data.context}\n` : ''}请各位发表意见
         />
 
         {/* 主内容区 */}
-        <div className="flex-1 flex flex-col bg-white">
+        <div
+          className={cn(
+            'flex-1 flex flex-col bg-white transition-all duration-300',
+            submessagesOpen && 'mr-80 md:mr-96 lg:mr-[450px]'
+          )}
+        >
           <ChatPageHeader
             hasMessages={false}
             loading={loading}
@@ -215,7 +223,12 @@ ${data.context ? `背景信息：\n${data.context}\n` : ''}请各位发表意见
       />
 
       {/* 主内容区 */}
-      <div className="flex-1 flex flex-col bg-white">
+      <div
+        className={cn(
+          'flex-1 flex flex-col bg-white transition-all duration-300',
+          submessagesOpen && 'mr-80 md:mr-96 lg:mr-[450px]'
+        )}
+      >
         {/* 页面头部 */}
         <ChatPageHeader
           hasMessages={renderMessages.length > 0}
