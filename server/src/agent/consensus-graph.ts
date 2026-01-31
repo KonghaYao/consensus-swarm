@@ -20,22 +20,28 @@ import { masterAgentConfig } from '../config/master-agent.js';
  * - 逻辑清晰，职责分离
  */
 async function consensusAgentFunction(state: ConsensusStateType): Promise<Partial<ConsensusStateType>> {
+    const globalTaskStore = state.task_store;
     // 创建参与者工具
-    const agentsAsTools = state.agentConfigs.map((participantConfig) => {
-        return ask_subagents(
-            (taskId, args, parent_state: any) => {
-                return createStandardAgent(participantConfig, {
-                    taskId: taskId,
-                });
-            },
-            {
-                name: `ask_${participantConfig.role.id}_speak`,
-                description: participantConfig.role.description,
-                passThroughKeys: [],
-                messageFilter: 'discussion',
-            },
-        );
-    });
+    const agentsAsTools = state.agentConfigs
+        .filter((i) => i.id !== 'master')
+        .map((participantConfig) => {
+            return ask_subagents(
+                (taskId, args, parent_state: any) => {
+                    return createStandardAgent(participantConfig, {
+                        taskId: taskId,
+                    });
+                },
+                {
+                    name: `ask_${participantConfig.role.id}_speak`,
+                    description: participantConfig.role.description,
+                    passThroughKeys: [],
+                    messageFilter: 'discussion',
+                    submitInnerMessage(taskStore) {
+                        return Object.assign(globalTaskStore, taskStore);
+                    },
+                },
+            );
+        });
 
     // 创建投票工具
     const askDissentingAgentsTool = createDissentingAgentsTool(state);
@@ -44,15 +50,6 @@ async function consensusAgentFunction(state: ConsensusStateType): Promise<Partia
     // 创建带完整工具集的 Agent
     const agent = await createStandardAgent(masterAgentConfig, {
         tools: [...agentsAsTools, askDissentingAgentsTool, askEveryoneToVoteTool],
-        passThroughKeys: [
-            'topic',
-            'context',
-            'agentConfigs',
-            'currentRound',
-            'maxRounds',
-            'consensusThreshold',
-            'rounds',
-        ],
     });
 
     // 调用 agent 处理当前状态
@@ -60,6 +57,7 @@ async function consensusAgentFunction(state: ConsensusStateType): Promise<Partia
 
     return {
         ...newState,
+        task_store: globalTaskStore,
     };
 }
 

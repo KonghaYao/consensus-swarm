@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { AgentConfig } from '@/lib/agent-data-service';
-import { createAgent, updateAgent } from '@/lib/agent-data-service';
+import { createAgentAsync, updateAgentAsync } from '@/lib/agent-data-service';
 import {
   Dialog,
   DialogContent,
@@ -31,6 +31,7 @@ export function AgentConfigDialog({ open, onOpenChange, agent }: AgentConfigDial
   const [temperature, setTemperature] = useState(0.7);
   const [enableThinking, setEnableThinking] = useState(false);
   const [tools, setTools] = useState<Record<string, boolean>>({});
+  const [saving, setSaving] = useState(false);
 
   const availableTools = ['invoke_sub_agent', 'web_search', 'code_execution'];
   const availableModels = {
@@ -64,31 +65,43 @@ export function AgentConfigDialog({ open, onOpenChange, agent }: AgentConfigDial
     }
   }, [agent, open]);
 
-  const handleSave = () => {
-    const agentConfig: Omit<AgentConfig, 'id'> = {
-      role: {
-        id: name.toLowerCase().replace(/\s+/g, '-'),
-        name,
-        description,
-        perspective,
-        systemPrompt,
-      },
-      model: {
-        provider,
-        model,
-        temperature,
-        enableThinking,
-      },
-      tools,
-    };
-
-    if (agent) {
-      updateAgent(agent.id, agentConfig);
-    } else {
-      createAgent(agentConfig);
+  const handleSave = async () => {
+    if (!name.trim() || !description.trim() || !perspective.trim()) {
+      alert('Please fill in all required fields');
+      return;
     }
 
-    onOpenChange(false);
+    setSaving(true);
+    try {
+      const agentConfig: Omit<AgentConfig, 'id'> = {
+        role: {
+          id: name.toLowerCase().replace(/\s+/g, '-'),
+          name,
+          description,
+          perspective,
+          systemPrompt,
+        },
+        model: {
+          provider,
+          model,
+          temperature,
+          enableThinking,
+        },
+        tools,
+      };
+
+      if (agent) {
+        await updateAgentAsync(agent.id, agentConfig);
+      } else {
+        await createAgentAsync(agentConfig);
+      }
+
+      onOpenChange(false);
+    } catch (error: any) {
+      alert(`Failed to save agent: ${error.message}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleToggleTool = (tool: string) => {
@@ -233,10 +246,12 @@ export function AgentConfigDialog({ open, onOpenChange, agent }: AgentConfigDial
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Cancel
           </Button>
-          <Button onClick={handleSave}>Save</Button>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? 'Saving...' : 'Save'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

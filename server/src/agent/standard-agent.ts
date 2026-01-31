@@ -13,11 +13,11 @@ import { initChatModel } from '../utils/initChatModel.js';
  */
 export async function createStandardAgent(
     config: AgentConfig,
-    extraConfig?: {
+    extraConfig: {
         tools?: UnionTool[];
         taskId?: string;
         passThroughKeys?: string[];
-    },
+    } = {},
 ) {
     // 初始化聊天模型
     const chatModel = await initChatModel(config.model.model, {

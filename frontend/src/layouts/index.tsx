@@ -1,11 +1,11 @@
 /**
  * Layout 组件
- * 统一的页面布局 - 支持双侧边栏
+ * 统一的页面布局 - 左侧导航边栏
  */
 
 import React from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
-import { Header } from './Header';
+import { Outlet } from 'react-router-dom';
+import { Sidebar } from './Sidebar';
 import { Main } from './Main';
 
 export interface LayoutProps {
@@ -13,14 +13,13 @@ export interface LayoutProps {
 }
 
 export const Layout: React.FC<LayoutProps> = ({ className = '' }) => {
-
-
   return (
     <div className={`flex h-screen bg-gray-50 ${className}`}>
+      {/* 左侧导航边栏 */}
+      <Sidebar />
 
       {/* 主内容区 */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header />
         <Main>
           <Outlet />
         </Main>
@@ -29,3 +28,10 @@ export const Layout: React.FC<LayoutProps> = ({ className = '' }) => {
   );
 };
 
+// Export other components
+export { AppShell } from './AppShell';
+export { AppShellHeader } from './AppShellHeader';
+export { HistoryDrawer } from './HistoryDrawer';
+export { Header } from './Header';
+export { Main } from './Main';
+export { Sidebar } from './Sidebar';

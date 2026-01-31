@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { Trash2, RefreshCw, Bot, Settings, ListTodo } from 'lucide-react';
+import { Trash2, RefreshCw, Bot, Settings, ListTodo, Plus } from 'lucide-react';
 import type { AgentConfig } from '@/lib/agent-data-service';
 
 interface ChatHeaderProps {
@@ -65,20 +65,6 @@ export function ChatHeader({
                 ))}
               </select>
             )}
-            {hasMessages && (
-              <button
-                onClick={onRegenerate}
-                disabled={loading}
-                className={cn(
-                  "flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors",
-                  "hover:bg-secondary",
-                  loading && "opacity-50 cursor-not-allowed"
-                )}
-              >
-                <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
-                重新生成
-              </button>
-            )}
             <button
               onClick={onClear}
               className={cn(
@@ -86,8 +72,8 @@ export function ChatHeader({
                 "hover:bg-destructive/10 hover:text-destructive"
               )}
             >
-              <Trash2 className="w-4 h-4" />
-              清空
+              <Plus className="w-4 h-4" />
+              新会议
             </button>
           </div>
         </div>

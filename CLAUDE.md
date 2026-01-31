@@ -90,29 +90,66 @@ to `server/src/agent/tools/registry.ts`.
 frontend/src/
 ├── components/
 │   ├── chat/                  # Chat interface components
-│   │   ├── ChatPage.tsx       # Main chat page with sidebar
+│   │   ├── ChatPage.tsx       # Main chat page (refactored to use AppShell)
+│   │   ├── ChatPageHeader.tsx # Chat page header component
 │   │   ├── ChatInput.tsx      # Message input
 │   │   ├── MessageList.tsx    # Message display
-│   │   ├── HistorySidebar.tsx # Chat history sidebar
+│   │   ├── HistorySidebar.tsx # Legacy fixed sidebar (deprecated)
 │   │   └── [message types]
 │   ├── agent-config/          # Agent configuration UI
 │   ├── ai-elements/           # Markdown rendering (Streamdown)
 │   └── ui/                    # Radix UI components
+│       ├── sheet.tsx          # Drawer/Sheet component
+│       └── ...
 ├── pages/
-│   ├── ChatPage.tsx           # Chat route
-│   └── AgentConfigPage.tsx    # Agent config route
+│   ├── ChatPage.tsx           # Chat route (uses AppShell + HistoryDrawer)
+│   └── AgentConfigPage.tsx    # Agent config route (uses AppShell + AppShellHeader)
 ├── layouts/
+│   ├── AppShell.tsx           # Unified application shell container
+│   ├── AppShellHeader.tsx     # Reusable page header component
+│   ├── HistoryDrawer.tsx      # Drawer-based history panel
+│   ├── Header.tsx             # Global navigation header
 │   ├── Main.tsx               # Main layout with header
-│   └── Header.tsx
+│   └── index.tsx              # Layout exports
+├── contexts/
+│   └── DrawerContext.tsx      # Global drawer state management
 └── main.tsx                   # App entry point
 ```
+
+### Frontend Layout System
+
+The application uses an **App Shell** architecture with a drawer-based navigation system:
+
+**AppShell** (`layouts/AppShell.tsx`):
+- Main container component for all pages
+- Supports optional page header and drawer content
+- Flex layout with full-height design
+
+**AppShellHeader** (`layouts/AppShellHeader.tsx`):
+- Reusable page header with title, description, and actions
+- Consistent styling across all pages
+
+**HistoryDrawer** (`layouts/HistoryDrawer.tsx`):
+- Drawer-based history panel using Sheet component
+- Slides in from left on desktop, right on mobile
+- Triggered by history button in global Header
+
+**DrawerContext** (`contexts/DrawerContext.tsx`):
+- Global state for drawer open/close
+- Provides `useDrawer()` hook for accessing drawer state
+
+**Sheet** (`components/ui/sheet.tsx`):
+- Radix UI Dialog-based drawer component
+- Supports 4 directions (top/right/bottom/left)
+- Smooth animations and backdrop
 
 ### Frontend Details
 
 -   **Streaming**: Uses Vercel AI SDK (`ai` package) for streaming responses
 -   **Markdown**: Streamdown with plugins for code, math, mermaid, CJK support
--   **State**: @nanostores for lightweight state management
+-   **State**: @nanostores for lightweight state management, Context API for drawer state
 -   **Routing**: React Router v7
+-   **Layout**: App Shell pattern with drawer-based navigation
 
 ## Configuration
 
@@ -185,3 +222,4 @@ export const exampleAgentConfig: AgentConfig = {
 -   **Custom Voting Logic**: Modify the vote parsing logic in `ask_everyone_to_vote` tool within `consensus-graph.ts`.
 -   **Frontend Components**: Use Radix UI primitives from `components/ui/` and compose them with Tailwind utility
     classes.
+-   **Frontend Layout**: Use `AppShell` for new pages. Access drawer state via `useDrawer()` hook from `contexts/DrawerContext.tsx`.

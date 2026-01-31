@@ -146,3 +146,6 @@ __pycache__
 deno.lock
 
 **/*/rg
+
+
+server/server/data/**/*

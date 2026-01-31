@@ -39,12 +39,13 @@ export const ask_subagents = (
          * - 'user': 只传递用户的消息
          */
         messageFilter?: 'all' | 'discussion' | 'user';
+        submitInnerMessage?: (task_store: Record<string, any>) => void;
     },
 ) =>
     tool(
         async (args, config: ToolRuntime<typeof SubAgentStateSchema, any>) => {
             const state = config.state;
-            const taskId: string = args.task_id || config.toolCallId;
+            const taskId: string = config.toolCallId;
 
             // 根据过滤策略选择消息
             const sub_state = {
@@ -91,7 +92,9 @@ export const ask_subagents = (
                     update[key] = new_state[key];
                 }
             });
-
+            options?.submitInnerMessage({
+                [taskId]: new_state,
+            });
             return new Command({
                 update,
             });

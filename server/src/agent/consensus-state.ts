@@ -6,9 +6,33 @@ import { BaseMessage } from '@langchain/core/messages';
 import { createState, createDefaultAnnotation } from '@langgraph-js/pro';
 import { MessagesAnnotation } from '@langchain/langgraph';
 import { AgentConfig } from './types.js';
-import { teamLeadConfig } from '../config/agents/team-lead.js';
-import { backendEngineerConfig } from '../config/agents/backend-engineer.js';
 import { SubAgentAnnotation } from '../utils/ask-agents.js';
+import { agentsService, initializeAgentsDatabase } from '../services/agents.service.js';
+
+/**
+ * Load agent configs from database (with fallback to static configs)
+ */
+async function loadAgentConfigs(): Promise<AgentConfig[]> {
+    try {
+        await initializeAgentsDatabase();
+        return agentsService.getAllAgents();
+    } catch (error) {
+        console.error('Failed to load agent configs from database, using fallback:', error);
+        // Fallback to empty array - will be populated by frontend via extraParams
+        return [];
+    }
+}
+
+/**
+ * Synchronously get initial agent configs
+ * Note: Database is initialized asynchronously on first API call
+ * This is just a fallback for when agentConfigs is not provided via extraParams
+ */
+function getInitialAgentConfigs(): AgentConfig[] {
+    // Return empty array - actual configs will be provided by frontend via extraParams
+    // or loaded from database on API calls
+    return [];
+}
 
 /**
  * 会议动作（Agent 根据此字段决定执行什么操作）
@@ -94,12 +118,17 @@ export interface RoundInfo {
  */
 export const ConsensusAnnotation = createState(MessagesAnnotation, SubAgentAnnotation).build({
     /** Agent 配置列表 - 所有参与者的完整配置 */
-    agentConfigs: createDefaultAnnotation(() => [teamLeadConfig, backendEngineerConfig] as AgentConfig[]),
+    agentConfigs: createDefaultAnnotation(() => getInitialAgentConfigs() as AgentConfig[]),
     /**
      * 当前阶段 - 用于状态追踪和外部查询
      * INITIAL → DISCUSSION → VOTING → CONSENSUS/SUMMARY/FAILED
      */
     stage: createDefaultAnnotation(() => MeetingStage.INITIAL),
 });
+
+/**
+ * Re-export load function for external use
+ */
+export { loadAgentConfigs, initializeAgentsDatabase };
 
 export type ConsensusStateType = typeof ConsensusAnnotation.State;
