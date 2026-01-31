@@ -10,9 +10,8 @@ createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
       <SettingsProvider>
-
         <ChatProvider
-          defaultAgent="code"
+          defaultAgent="consensusGraph"
           apiUrl={import.meta.env.VITE_API_URL || new URL('/api/langgraph', location.href).toString()}
           defaultHeaders={{}}
           withCredentials={false}
@@ -26,5 +25,5 @@ createRoot(document.getElementById('root')!).render(
         </ChatProvider>
       </SettingsProvider>
     </BrowserRouter>
-  </React.StrictMode>
+  </React.StrictMode>,
 );
