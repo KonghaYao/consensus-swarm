@@ -7,16 +7,16 @@
     "scripts": {
         "dev": "pnpm -r dev",
         "dev:server": "pnpm --filter server dev",
-        "dev:frontend": "pnpm --filter frontend dev",
+        "dev:frontend": "pnpm --filter zen-worker dev",
         "dev:all": "pnpm dev:server & pnpm dev:frontend",
         "build": "pnpm -r build",
         "build:server": "pnpm --filter server build",
-        "build:frontend": "pnpm --filter frontend build",
+        "build:frontend": "pnpm --filter zen-worker build",
         "type-check": "pnpm -r exec tsc --noEmit",
         "type-check:server": "pnpm --filter server exec tsc --noEmit",
-        "type-check:frontend": "pnpm --filter frontend exec tsc --noEmit",
+        "type-check:frontend": "pnpm --filter zen-worker exec tsc --noEmit",
         "test": "vitest",
-        "preview": "pnpm --filter frontend preview"
+        "preview": "pnpm --filter zen-worker preview"
     },
     "dependencies": {
         "uuid": "^13.0.0",

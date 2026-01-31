@@ -19,18 +19,16 @@ export function AgentConfigForm({ agent, onSave, onCancel }: AgentConfigFormProp
   const [description, setDescription] = useState('');
   const [perspective, setPerspective] = useState('');
   const [systemPrompt, setSystemPrompt] = useState('');
-  const [provider, setProvider] = useState<'anthropic' | 'openai' | 'google'>('openai');
+  const [provider, setProvider] = useState<'openai'>('openai');
   const [model, setModel] = useState('mimo-v2-flash');
   const [temperature, setTemperature] = useState(0.7);
   const [enableThinking, setEnableThinking] = useState(false);
   const [tools, setTools] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState(false);
 
-  const availableTools = ['invoke_sub_agent', 'web_search', 'code_execution'];
+  const availableTools = ['invoke_sub_agent'];
   const availableModels = {
-    anthropic: ['claude-3-5-sonnet-20241022', 'claude-3-haiku-20240307'],
-    openai: ['mimo-v2-flash', 'gpt-4', 'gpt-3.5-turbo'],
-    google: ['gemini-pro', 'gemini-flash'],
+    openai: ['mimo-v2-flash'],
   };
 
   useEffect(() => {
@@ -39,7 +37,7 @@ export function AgentConfigForm({ agent, onSave, onCancel }: AgentConfigFormProp
       setDescription(agent.role.description);
       setPerspective(agent.role.perspective);
       setSystemPrompt(agent.role.systemPrompt || '');
-      setProvider(agent.model.provider);
+      setProvider(agent.model.provider as 'openai');
       setModel(agent.model.model);
       setTemperature(agent.model.temperature || 0.7);
       setEnableThinking(agent.model.enableThinking || false);
@@ -114,12 +112,7 @@ export function AgentConfigForm({ agent, onSave, onCancel }: AgentConfigFormProp
 
           <div className="space-y-2">
             <Label htmlFor="name">名称 *</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Agent 角色名称"
-            />
+            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Agent 角色名称" />
           </div>
 
           <div className="space-y-2">
@@ -223,11 +216,7 @@ export function AgentConfigForm({ agent, onSave, onCancel }: AgentConfigFormProp
           <div className="space-y-2">
             {availableTools.map((tool) => (
               <div key={tool} className="flex items-center space-x-2">
-                <Checkbox
-                  id={tool}
-                  checked={tools[tool] || false}
-                  onCheckedChange={() => handleToggleTool(tool)}
-                />
+                <Checkbox id={tool} checked={tools[tool] || false} onCheckedChange={() => handleToggleTool(tool)} />
                 <Label htmlFor={tool} className="cursor-pointer">
                   {tool}
                 </Label>

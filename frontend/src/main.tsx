@@ -12,7 +12,7 @@ createRoot(document.getElementById('root')!).render(
       <SettingsProvider>
         <ChatProvider
           defaultAgent="consensusGraph"
-          apiUrl={import.meta.env.VITE_API_URL || new URL('/api/langgraph', location.href).toString()}
+          apiUrl={new URL('/api/langgraph', window.location.origin).toString()}
           defaultHeaders={{}}
           withCredentials={false}
           showHistory={true}

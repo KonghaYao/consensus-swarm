@@ -47,6 +47,12 @@ export enum MeetingAction {
 }
 
 /**
+ * 最大投票轮数限制
+ * 超过此轮数仍未达成共识时，将强制结束会议并输出分歧报告
+ */
+export const MAX_VOTING_ROUNDS = 5;
+
+/**
  * 会议阶段（用于状态追踪）
  */
 export enum MeetingStage {
@@ -124,6 +130,12 @@ export const ConsensusAnnotation = createState(MessagesAnnotation, SubAgentAnnot
      * INITIAL → DISCUSSION → VOTING → CONSENSUS/SUMMARY/FAILED
      */
     stage: createDefaultAnnotation(() => MeetingStage.INITIAL),
+    /**
+     * 当前投票轮数
+     * 从 0 开始，每次调用 ask_everyone_to_vote 后递增
+     * 达到 MAX_VOTING_ROUNDS 时强制结束会议
+     */
+    voteCount: createDefaultAnnotation(() => 0),
 });
 
 /**

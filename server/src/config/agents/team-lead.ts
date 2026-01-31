@@ -23,7 +23,7 @@ export const teamLeadConfig: AgentConfig = {
         provider: 'openai',
         model: 'mimo-v2-flash',
         temperature: 0.7,
-        enableThinking: true,
+        enableThinking: false,
     },
     tools: {},
 };

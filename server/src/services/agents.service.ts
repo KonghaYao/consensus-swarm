@@ -29,7 +29,6 @@ function rowToAgentConfig(row: any): AgentConfig {
         },
         tools: {}, // Will be populated separately
         contextTemplate: row.context_template || undefined,
-        avatar: row.avatar || undefined,
     };
 }
 
@@ -143,7 +142,7 @@ export class AgentsService {
             values.model_thinking_tokens,
             values.context_template,
             values.avatar,
-            values.is_default
+            values.is_default,
         );
 
         // Save tools
@@ -195,7 +194,7 @@ export class AgentsService {
             values.context_template,
             values.avatar,
             values.updated_at,
-            id
+            id,
         );
 
         // Update tools if provided
@@ -277,7 +276,7 @@ export class AgentsService {
                 values.model_enable_thinking,
                 values.model_thinking_tokens,
                 values.context_template,
-                values.avatar
+                values.avatar,
             );
 
             // Save tools
