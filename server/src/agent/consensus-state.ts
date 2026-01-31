@@ -93,44 +93,13 @@ export interface RoundInfo {
  * - 主持人 Agent 通过 action 字段控制流程转换
  */
 export const ConsensusAnnotation = createState(MessagesAnnotation, SubAgentAnnotation).build({
-    /** 会议主题 - 所有 Agent 讨论的核心话题 */
-    topic: createDefaultAnnotation(() => ''),
-
-    /** 额外上下文 - 提供给 Agent 的补充信息 */
-    context: createDefaultAnnotation(() => ({})),
-
     /** Agent 配置列表 - 所有参与者的完整配置 */
     agentConfigs: createDefaultAnnotation(() => [teamLeadConfig, backendEngineerConfig] as AgentConfig[]),
-
-    /**
-     * 当前动作 - 主持人 Agent 根据此字段决定执行什么操作
-     * INITIALIZE → DISCUSS → VOTE → CHECK_CONSENSUS → SUMMARIZE → FINISH
-     */
-    action: createDefaultAnnotation(() => MeetingAction.INITIALIZE),
-
     /**
      * 当前阶段 - 用于状态追踪和外部查询
      * INITIAL → DISCUSSION → VOTING → CONSENSUS/SUMMARY/FAILED
      */
     stage: createDefaultAnnotation(() => MeetingStage.INITIAL),
-
-    /** 轮次历史 - 记录每一轮的讨论和投票结果 */
-    rounds: createDefaultAnnotation(() => [] as RoundInfo[]),
-
-    /** 当前轮次号 - 从 0 开始，讨论时递增 */
-    currentRound: createDefaultAnnotation(() => 0),
-
-    /** 最大轮次限制 - 防止无限讨论 */
-    maxRounds: createDefaultAnnotation(() => 5),
-
-    /** 共识阈值 - 达成共识所需的同意比例（1.0 = 绝对共识） */
-    consensusThreshold: createDefaultAnnotation(() => 1.0),
-
-    /** 会议总结 - 会议结束后生成的总结内容 */
-    summary: createDefaultAnnotation(() => ''),
-
-    /** 错误信息 - 记录流程中发生的错误 */
-    error: createDefaultAnnotation(() => ''),
 });
 
 export type ConsensusStateType = typeof ConsensusAnnotation.State;

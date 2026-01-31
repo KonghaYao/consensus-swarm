@@ -15,7 +15,7 @@ export async function createStandardAgent(
     config: AgentConfig,
     extraConfig?: {
         tools?: UnionTool[];
-        task_id?: string;
+        taskId?: string;
         passThroughKeys?: string[];
     },
 ) {
@@ -25,6 +25,7 @@ export async function createStandardAgent(
         temperature: config.model.temperature,
         streamUsage: true,
         enableThinking: config.model.enableThinking ?? true,
+        taskId: extraConfig.taskId,
     });
 
     const tools: UnionTool[] = [];
@@ -40,7 +41,7 @@ export async function createStandardAgent(
 
     // 构建 LangChain Agent
     const agent = createAgent({
-        name: extraConfig.task_id ? 'subagent_' + extraConfig.task_id : undefined,
+        name: extraConfig.taskId ? 'subagent_' + extraConfig.taskId : undefined,
         model: chatModel,
         tools,
         systemPrompt: buildSystemPrompt(config),

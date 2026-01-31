@@ -21,7 +21,7 @@ const schema = z.object({
         .string()
         .optional()
         .describe('The task id to ask the subagent, if not provided, will use the tool call id'),
-    subagent_id: z.string(),
+    subagent_id: z.string().optional(),
     task_description: z.string().describe('Describe the user state and what you want the subagent to do.'),
     data_transfer: z.any().optional().describe('Data to transfer to the subagent.'),
 });
@@ -44,7 +44,7 @@ export const ask_subagents = (
     tool(
         async (args, config: ToolRuntime<typeof SubAgentStateSchema, any>) => {
             const state = config.state;
-            const taskId: string = args.task_id || config.toolCall!.id!;
+            const taskId: string = args.task_id || config.toolCallId;
 
             // 根据过滤策略选择消息
             const sub_state: any = {

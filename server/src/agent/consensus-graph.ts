@@ -19,9 +19,9 @@ import { z } from 'zod';
 async function consensusAgentFunction(state: ConsensusStateType): Promise<Partial<ConsensusStateType>> {
     const agentsAsTools = state.agentConfigs.map((agentConfig) => {
         return ask_subagents(
-            (task_id, args, parent_state: any) => {
+            (taskId, args, parent_state: any) => {
                 return createStandardAgent(agentConfig, {
-                    task_id,
+                    taskId: taskId,
                 });
             },
             {
@@ -223,24 +223,8 @@ async function consensusAgentFunction(state: ConsensusStateType): Promise<Partia
 
     const newState = await agent.invoke(state, { recursionLimit: 200 });
 
-    // 检查是否达成共识，达成共识则进入总结阶段
-    const lastMessage = newState.messages[newState.messages.length - 1];
-    let newStage = MeetingStage.DISCUSSION;
-    let newAction = MeetingAction.DISCUSS;
-
-    // 检查消息中是否包含共识达成信息
-    if (lastMessage instanceof AIMessage) {
-        const content = lastMessage.content as string;
-        if (content.includes('## 共识结果：达成') || content.includes('共识结果：达成')) {
-            newStage = MeetingStage.SUMMARY;
-            newAction = MeetingAction.SUMMARIZE;
-        }
-    }
-
     return {
         ...newState,
-        stage: newStage,
-        action: newAction,
     };
 }
 
