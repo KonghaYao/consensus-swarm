@@ -40,25 +40,68 @@ async function consensusAgentFunction(state: ConsensusStateType): Promise<Partia
     });
     const ask_everyone_to_vote = tool(
         async () => {
+            // 创建所有 Agent 实例
             const allAgents = await Promise.all(
                 state.agentConfigs.map((agentConfig) => {
                     return createStandardAgent(agentConfig);
                 }),
             );
-            const allMessage = await Promise.all(
-                allAgents.map(async (i) => {
-                    return (
-                        await i.invoke({
-                            ...state,
-                            messages: [new HumanMessage('请你开始投票')],
-                        })
-                    ).messages;
+
+            // 构建投票提示消息，包含之前的讨论历史
+            const votePrompt = new HumanMessage(
+                `现在进入投票阶段。
+请基于之前的讨论内容，决定你是否同意当前提案。
+
+回复格式：
+<vote>yes</vote> 或 <vote>no</vote>`,
+            );
+
+            // 并发调用所有 Agent 进行投票
+            const allMessages = await Promise.all(
+                allAgents.map(async (agent, index) => {
+                    const result = await agent.invoke({
+                        ...state,
+                        messages: [...state.messages, votePrompt],
+                    });
+                    return {
+                        agentConfig: state.agentConfigs[index],
+                        messages: result.messages,
+                    };
                 }),
             );
-            return allMessage.map((i) => i.at(-1)?.text.includes('<vote>yes</vote>'));
+
+            // 解析投票结果
+            const voteRecords = allMessages.map(({ agentConfig, messages }) => {
+                const lastMessage = messages[messages.length - 1];
+                const text = lastMessage?.text || '';
+                const hasYesVote = text.includes('<vote>yes</vote>');
+
+                return {
+                    agentId: agentConfig.id,
+                    agentName: agentConfig.role.name,
+                    agree: hasYesVote,
+                    timestamp: Date.now(),
+                };
+            });
+
+            // 统计投票结果
+            const yesCount = voteRecords.filter((v) => v.agree).length;
+            const totalCount = voteRecords.length;
+            const agreementRatio = yesCount / totalCount;
+
+            // 返回投票结果摘要
+            return {
+                totalVotes: totalCount,
+                yesVotes: yesCount,
+                noVotes: totalCount - yesCount,
+                agreementRatio,
+                consensusReached: agreementRatio >= state.consensusThreshold,
+                voteRecords,
+            };
         },
         {
             name: 'ask_everyone_to_vote',
+            description: '请求所有参会 Agent 进行投票，基于之前的讨论内容决定是否同意提案',
         },
     );
     const agent = await createStandardAgent(masterAgentConfig, {

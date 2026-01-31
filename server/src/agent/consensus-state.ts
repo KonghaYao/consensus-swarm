@@ -8,6 +8,7 @@ import { MessagesAnnotation } from '@langchain/langgraph';
 import { AgentConfig } from './types.js';
 import { teamLeadConfig } from '../config/agents/team-lead.js';
 import { backendEngineerConfig } from '../config/agents/backend-engineer.js';
+import { SubAgentAnnotation } from '../utils/ask-agents.js';
 
 /**
  * 会议动作（Agent 根据此字段决定执行什么操作）
@@ -91,7 +92,7 @@ export interface RoundInfo {
  * - 基于 LangGraph 的状态管理
  * - 主持人 Agent 通过 action 字段控制流程转换
  */
-export const ConsensusAnnotation = createState(MessagesAnnotation).build({
+export const ConsensusAnnotation = createState(MessagesAnnotation, SubAgentAnnotation).build({
     /** 会议主题 - 所有 Agent 讨论的核心话题 */
     topic: createDefaultAnnotation(() => ''),
 
