@@ -13,3 +13,4 @@ export { ChatHeader } from './ChatHeader';
 export { HumanMessage } from './HumanMessage';
 export { BotMessage } from './BotMessage';
 export { ToolMessage } from './ToolMessage';
+export { MeetingInitForm } from './MeetingInitForm';

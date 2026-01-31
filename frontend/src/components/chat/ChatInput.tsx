@@ -3,7 +3,7 @@
  */
 
 import React, { useRef, useEffect } from 'react';
-import { Send, X } from 'lucide-react';
+import { Send, X, Loader2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 interface ChatInputProps {
@@ -11,6 +11,7 @@ interface ChatInputProps {
   onChange: (value: string) => void;
   onSend: () => void;
   disabled?: boolean;
+  loading?: boolean;
   placeholder?: string;
 }
 
@@ -19,6 +20,7 @@ export function ChatInput({
   onChange,
   onSend,
   disabled = false,
+  loading = false,
   placeholder = '输入消息...',
 }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -26,7 +28,7 @@ export function ChatInput({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (value.trim() && !disabled) {
+      if (value.trim() && !disabled && !loading) {
         onSend();
       }
     }
@@ -48,37 +50,39 @@ export function ChatInput({
     autoResize();
   }, [value]);
 
+  const isDisabled = disabled || loading;
+
   return (
     <div className="border-t bg-background">
       <div className="max-w-3xl mx-auto px-4 py-4">
         <div className={cn(
           "flex items-end gap-2 p-3 rounded-2xl border transition-colors",
           "focus-within:border-primary",
-          disabled && "opacity-50 cursor-not-allowed"
+          isDisabled && "opacity-50 cursor-not-allowed"
         )}>
           <textarea
             ref={textareaRef}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            disabled={disabled}
-            placeholder={placeholder}
+            disabled={isDisabled}
+            placeholder={loading ? 'AI 正在思考...' : placeholder}
             rows={1}
             className={cn(
               "flex-1 resize-none outline-none bg-transparent text-base",
               "max-h-[200px] min-h-[24px]",
-              disabled && "pointer-events-none"
+              isDisabled && "pointer-events-none"
             )}
           />
 
-          {value && (
+          {value && !loading && (
             <button
               onClick={handleClear}
-              disabled={disabled}
+              disabled={isDisabled}
               className={cn(
                 "p-2 rounded-lg hover:bg-secondary transition-colors",
                 "text-muted-foreground hover:text-foreground",
-                disabled && "pointer-events-none"
+                isDisabled && "pointer-events-none"
               )}
             >
               <X className="w-5 h-5" />
@@ -87,20 +91,31 @@ export function ChatInput({
 
           <button
             onClick={onSend}
-            disabled={!value.trim() || disabled}
+            disabled={!value.trim() || isDisabled}
             className={cn(
-              "p-2 rounded-lg transition-colors",
-              value.trim() && !disabled
+              "p-2 rounded-lg transition-colors flex items-center justify-center",
+              value.trim() && !isDisabled
                 ? "bg-primary text-primary-foreground hover:bg-primary/90"
                 : "bg-muted text-muted-foreground cursor-not-allowed"
             )}
           >
-            <Send className="w-5 h-5" />
+            {loading ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <Send className="w-5 h-5" />
+            )}
           </button>
         </div>
 
         <div className="text-xs text-muted-foreground text-center mt-2">
-          按 Enter 发送，Shift + Enter 换行
+          {loading ? (
+            <span className="flex items-center justify-center gap-2">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              AI 正在处理中...
+            </span>
+          ) : (
+            '按 Enter 发送，Shift + Enter 换行'
+          )}
         </div>
       </div>
     </div>
