@@ -5,6 +5,8 @@ interface InitChatModelOptions {
     modelProvider?: string;
     streamUsage?: boolean;
     enableThinking?: boolean;
+    temperature?: number;
+    taskId?: string;
 }
 
 export const initChatModel = async (mainModel: string, options: InitChatModelOptions = {}) => {
@@ -19,18 +21,24 @@ export const initChatModel = async (mainModel: string, options: InitChatModelOpt
             streaming: true,
             maxRetries: 1,
             maxTokens: 65536,
+            temperature: options.temperature,
             thinking: enableThinking
                 ? {
                       budget_tokens: 1024,
                       type: 'enabled',
                   }
                 : undefined,
+            metadata: {
+                // message 通过这个 id 判断是否为子调用
+                parent_id: options.taskId,
+            },
         });
     } else {
         model = new ChatOpenAI({
             model: mainModel,
             streamUsage: true,
             maxRetries: 1,
+            temperature: options.temperature,
             modelKwargs: enableThinking
                 ? {
                       thinking: {
@@ -38,6 +46,10 @@ export const initChatModel = async (mainModel: string, options: InitChatModelOpt
                       },
                   }
                 : undefined,
+            metadata: {
+                // message 通过这个 id 判断是否为子调用
+                parent_id: options.taskId,
+            },
         });
     }
 

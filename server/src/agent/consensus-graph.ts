@@ -1,118 +1,65 @@
 /**
  * 共识流程图定义
  * LangGraph 实现（单 agent function 架构）
+ * 使用 HOC 模式模块化工具创建
  */
 
 import { START, StateGraph } from '@langchain/langgraph';
-import { ConsensusAnnotation, ConsensusStateType, MeetingStage } from './consensus-state.js';
+import { ConsensusAnnotation, ConsensusStateType } from './consensus-state.js';
 import { createStandardAgent } from './standard-agent.js';
+import { createDissentingAgentsTool, createVotingTool } from './tools/consensus-tools.js';
 import { ask_subagents } from '../utils/ask-agents.js';
-import { HumanMessage } from '@langchain/core/messages';
-import { tool } from 'langchain';
 import { masterAgentConfig } from '../config/master-agent.js';
 
 /**
  * 统一的 Agent Function
  * 根据 state.action 执行不同的操作
+ *
+ * 使用 HOC 模式：
+ * - withConsensusTools - 为 agent 添加讨论和投票工具
+ * - 逻辑清晰，职责分离
  */
 async function consensusAgentFunction(state: ConsensusStateType): Promise<Partial<ConsensusStateType>> {
-    if (state.stage === MeetingStage.INITIAL) {
-        // 添加初始化消息
-        const initMessage = `会议开始！
-主题：${state.topic}
-参会人员：${state.agentConfigs.map((c) => c.role.name).join(', ')}
-请各位发表意见。`;
-        state.messages.push(new HumanMessage(initMessage));
-    }
-
-    const agentsAsTools = state.agentConfigs.map((agentConfig) => {
+    // 创建参与者工具
+    const agentsAsTools = state.agentConfigs.map((participantConfig) => {
         return ask_subagents(
-            (task_id, args, parent_state: any) => {
-                return createStandardAgent(agentConfig, {
-                    task_id,
+            (taskId, args, parent_state: any) => {
+                return createStandardAgent(participantConfig, {
+                    taskId: taskId,
                 });
             },
             {
-                name: `ask_${agentConfig.role.id}_speak`,
-                description: agentConfig.role.description,
+                name: `ask_${participantConfig.role.id}_speak`,
+                description: participantConfig.role.description,
+                passThroughKeys: [],
+                messageFilter: 'discussion',
             },
         );
     });
-    const ask_everyone_to_vote = tool(
-        async () => {
-            // 创建所有 Agent 实例
-            const allAgents = await Promise.all(
-                state.agentConfigs.map((agentConfig) => {
-                    return createStandardAgent(agentConfig);
-                }),
-            );
 
-            // 构建投票提示消息，包含之前的讨论历史
-            const votePrompt = new HumanMessage(
-                `现在进入投票阶段。
-请基于之前的讨论内容，决定你是否同意当前提案。
+    // 创建投票工具
+    const askDissentingAgentsTool = createDissentingAgentsTool(state);
+    const askEveryoneToVoteTool = createVotingTool(state);
 
-回复格式：
-<vote>yes</vote> 或 <vote>no</vote>`,
-            );
-
-            // 并发调用所有 Agent 进行投票
-            const allMessages = await Promise.all(
-                allAgents.map(async (agent, index) => {
-                    const result = await agent.invoke({
-                        ...state,
-                        messages: [...state.messages, votePrompt],
-                    });
-                    return {
-                        agentConfig: state.agentConfigs[index],
-                        messages: result.messages,
-                    };
-                }),
-            );
-
-            // 解析投票结果
-            const voteRecords = allMessages.map(({ agentConfig, messages }) => {
-                const lastMessage = messages[messages.length - 1];
-                const text = lastMessage?.text || '';
-                const hasYesVote = text.includes('<vote>yes</vote>');
-
-                return {
-                    agentId: agentConfig.id,
-                    agentName: agentConfig.role.name,
-                    agree: hasYesVote,
-                    timestamp: Date.now(),
-                };
-            });
-
-            // 统计投票结果
-            const yesCount = voteRecords.filter((v) => v.agree).length;
-            const totalCount = voteRecords.length;
-            const agreementRatio = yesCount / totalCount;
-
-            // 返回投票结果摘要
-            return {
-                totalVotes: totalCount,
-                yesVotes: yesCount,
-                noVotes: totalCount - yesCount,
-                agreementRatio,
-                consensusReached: agreementRatio >= state.consensusThreshold,
-                voteRecords,
-            };
-        },
-        {
-            name: 'ask_everyone_to_vote',
-            description: '请求所有参会 Agent 进行投票，基于之前的讨论内容决定是否同意提案',
-        },
-    );
+    // 创建带完整工具集的 Agent
     const agent = await createStandardAgent(masterAgentConfig, {
-        tools: [...agentsAsTools, ask_everyone_to_vote],
+        tools: [...agentsAsTools, askDissentingAgentsTool, askEveryoneToVoteTool],
+        passThroughKeys: [
+            'topic',
+            'context',
+            'agentConfigs',
+            'currentRound',
+            'maxRounds',
+            'consensusThreshold',
+            'rounds',
+        ],
     });
 
-    const newState = await agent.invoke(state);
+    // 调用 agent 处理当前状态
+    const newState = await agent.invoke(state, { recursionLimit: 200 });
 
     return {
         ...newState,
-        stage: MeetingStage.DISCUSSION,
     };
 }
 

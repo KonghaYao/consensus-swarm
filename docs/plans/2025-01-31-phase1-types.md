@@ -2,91 +2,149 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** 完善 `types.ts`，添加完整的工具配置类型和接口定义
+**Goal:** 完善核心类型系统，支持多智能体共识流程
 
-**Architecture:** 基于 LangChain 的类型系统，扩展工具配置对象类型
+**Architecture:** 基于 LangChain 的类型系统，扩展共识相关类型
 
 **Tech Stack:** TypeScript, LangChain
 
 ---
 
-### Task 1: 添加工具配置类型
+## 实现状态
 
-**Files:**
-- Modify: `server/src/agent/types.ts`
+**已完成 (2025-01-31)**: ✅ 全部完成
 
-**Step 1: 添加 ToolsConfig 接口**
+---
+
+## 核心类型 (`server/src/agent/types.ts`)
+
+### 1. Agent 错误类型
 
 ```typescript
 /**
- * 工具配置（控制工具是否启用）
+ * Agent 错误码
  */
-export interface ToolsConfig {
-    search?: boolean;      // 搜索工具
-    code?: boolean;        // 代码执行工具
-    api?: boolean;         // API 调用工具
-    file?: boolean;        // 文件操作工具
-    // 可扩展其他工具
+export enum AgentErrorCode {
+    VALIDATION_FAILED = 'VALIDATION_FAILED',
+    INIT_FAILED = 'INIT_FAILED',
+    EXECUTE_FAILED = 'EXECUTE_FAILED',
+    TIMEOUT = 'TIMEOUT',
+    INVALID_STATE = 'INVALID_STATE',
+}
+
+/**
+ * Agent 错误类
+ */
+export class AgentError extends Error {
+    constructor(
+        message: string,
+        public code: AgentErrorCode,
+        public details?: Record<string, unknown>
+    ) {
+        super(message);
+        this.name = 'AgentError';
+    }
 }
 ```
 
-**Step 2: 更新 AgentConfig 接口**
-
-将 `tools: ToolInterface[]` 改为 `tools: ToolsConfig`
+### 2. Agent 配置类型
 
 ```typescript
+/**
+ * Agent 配置模型参数
+ */
+export interface ModelConfig {
+    provider: 'anthropic' | 'openai' | 'google';
+    model: string;
+    temperature?: number;
+    maxTokens?: number;
+    enableThinking?: boolean;
+    thinkingTokens?: number;
+}
+
+/**
+ * Agent 角色配置
+ */
+export interface AgentRoleConfig {
+    id: string;
+    name: string;
+    description: string;
+    perspective: string;
+    systemPrompt?: string;
+}
+
+/**
+ * Agent 配置（完全配置化）
+ */
 export interface AgentConfig {
     id: string;
     role: AgentRoleConfig;
     model: ModelConfig;
-    tools: ToolsConfig;    // 工具开关配置对象
+    tools: Record<string, boolean>; // 工具开关
     contextTemplate?: string;
 }
 ```
 
-**Step 3: 添加工具定义接口**
+### 3. 工具类型
 
 ```typescript
 /**
- * 工具定义（用于工具注册）
+ * 工具定义
  */
 export interface ToolDefinition {
     name: string;
     description: string;
-    factory: () => ToolInterface;
+    factory: () => Promise<UnionTool>;
 }
 
 /**
- * 工具注册表类型
+ * 工具注册表
  */
-export type ToolRegistry = Record<string, ToolDefinition>;
+export interface ToolRegistry {
+    [name: string]: ToolDefinition;
+}
 ```
 
-**Step 4: 运行类型检查**
+**说明**: `tools` 字段使用 `Record<string, boolean>` 而非计划的 `ToolsConfig` 接口，原因：
+- 与工具注册表设计一致
+- 更灵活，支持动态扩展工具
+- 减少类型定义维护成本
 
-```bash
-cd server && pnpm exec tsc --noEmit
-```
-
-Expected: No errors
-
-**Step 5: 提交**
-
-```bash
-git add server/src/agent/types.ts
-git commit -m "feat: add tool configuration types"
-```
-
----
-
-### Task 2: 添加 Agent 执行上下文类型
-
-**Files:**
-- Modify: `server/src/agent/types.ts`
-
-**Step 1: 添加 AgentExecutionContext 接口**
+### 4. 参与者类型
 
 ```typescript
+/**
+ * 会议参与者
+ */
+export interface Participant {
+    id: string;
+    name: string;
+    perspective: string;
+}
+```
+
+### 5. Agent 执行类型
+
+```typescript
+/**
+ * Agent 执行结果
+ */
+export interface AgentResult {
+    agentId: string;
+    message: BaseMessage;
+    metadata?: Record<string, unknown>;
+}
+
+/**
+ * 标准化 Agent 接口
+ */
+export interface StandardAgent {
+    id: string;
+    config: AgentConfig;
+    execute(input: AgentInput): Promise<AgentResult>;
+    updateConfig(config: Partial<AgentConfig>): void;
+}
+
 /**
  * Agent 执行上下文
  */
@@ -96,13 +154,12 @@ export interface AgentExecutionContext {
     stage: string;
     action: string;
     topic: string;
-    otherAgents: Array<{ id: string; name: string; }>;
+    otherAgents: Array<{ id: string; name: string }>;
 }
-```
 
-**Step 2: 扩展 AgentInput 接口**
-
-```typescript
+/**
+ * Agent 执行输入
+ */
 export interface AgentInput {
     messages: BaseMessage[];
     context?: Record<string, unknown>;
@@ -110,29 +167,7 @@ export interface AgentInput {
 }
 ```
 
-**Step 3: 运行类型检查**
-
-```bash
-cd server && pnpm exec tsc --noEmit
-```
-
-Expected: No errors
-
-**Step 4: 提交**
-
-```bash
-git add server/src/agent/types.ts
-git commit -m "feat: add agent execution context type"
-```
-
----
-
-### Task 3: 添加共识相关类型
-
-**Files:**
-- Modify: `server/src/agent/types.ts`
-
-**Step 1: 添加投票结果类型**
+### 6. 共识相关类型
 
 ```typescript
 /**
@@ -170,85 +205,143 @@ export interface ConsensusResult {
 }
 ```
 
-**Step 2: 运行类型检查**
+---
 
-```bash
-cd server && pnpm exec tsc --noEmit
+## 共识状态类型 (`server/src/agent/consensus-state.ts`)
+
+### 1. 枚举类型
+
+```typescript
+/**
+ * 会议动作（Agent 根据此字段决定执行什么操作）
+ */
+export enum MeetingAction {
+    INITIALIZE = 'initialize',
+    DISCUSS = 'discuss',
+    VOTE = 'vote',
+    CHECK_CONSENSUS = 'check_consensus',
+    SUMMARIZE = 'summarize',
+    FINISH = 'finish',
+}
+
+/**
+ * 会议阶段（用于状态追踪）
+ */
+export enum MeetingStage {
+    INITIAL = 'initial',
+    DISCUSSION = 'discussion',
+    VOTING = 'voting',
+    CONSENSUS = 'consensus',
+    SUMMARY = 'summary',
+    FAILED = 'failed',
+}
 ```
 
-Expected: No errors
+### 2. 核心数据结构
 
-**Step 3: 提交**
+```typescript
+/**
+ * Agent 观点记录
+ */
+export interface AgentViewpoint {
+    agentId: string;
+    agentName: string;
+    message: BaseMessage;
+    position: string;
+    timestamp: number;
+}
 
-```bash
-git add server/src/agent/types.ts
-git commit -m "feat: add consensus result types"
+/**
+ * 投票记录
+ */
+export interface VoteRecord {
+    agentId: string;
+    agentName: string;
+    agree: boolean;
+    reason?: string;
+    timestamp: number;
+}
+
+/**
+ * 轮次信息
+ */
+export interface RoundInfo {
+    roundNumber: number;
+    viewpoints: AgentViewpoint[];
+    votes?: VoteRecord[];
+    consensusReached: boolean;
+}
+```
+
+### 3. 共识状态注解
+
+```typescript
+import { createState, createDefaultAnnotation } from '@langgraph-js/pro';
+import { MessagesAnnotation } from '@langchain/langgraph';
+
+export const ConsensusAnnotation = createState(MessagesAnnotation, SubAgentAnnotation).build({
+    topic: createDefaultAnnotation(() => ''),
+    context: createDefaultAnnotation(() => ({})),
+    agentConfigs: createDefaultAnnotation(() => [teamLeadConfig, backendEngineerConfig] as AgentConfig[]),
+    action: createDefaultAnnotation(() => MeetingAction.INITIALIZE),
+    stage: createDefaultAnnotation(() => MeetingStage.INITIAL),
+    rounds: createDefaultAnnotation(() => [] as RoundInfo[]),
+    currentRound: createDefaultAnnotation(() => 0),
+    maxRounds: createDefaultAnnotation(() => 5),
+    consensusThreshold: createDefaultAnnotation(() => 1.0),
+    summary: createDefaultAnnotation(() => ''),
+    error: createDefaultAnnotation(() => ''),
+});
+
+export type ConsensusStateType = typeof ConsensusAnnotation.State;
 ```
 
 ---
 
-### Task 4: 添加错误类型
+## 类型设计原则
 
-**Files:**
-- Modify: `server/src/agent/types.ts`
+### 1. 命名规范
+- **枚举**: PascalCase (e.g., `MeetingAction`, `VoteOption`)
+- **接口**: PascalCase (e.g., `AgentConfig`, `VoteRecord`)
+- **字段**: camelCase (e.g., `agentId`, `consensusThreshold`)
+- **布尔值**: `is/has/should` 前缀 (当前实现中未使用)
 
-**Step 1: 添加错误码枚举**
+### 2. 类型层次
+```
+AgentConfig (顶层配置)
+├── AgentRoleConfig (角色配置)
+└── ModelConfig (模型配置)
 
-```typescript
-/**
- * Agent 错误码
- */
-export enum AgentErrorCode {
-    INITIALIZATION_FAILED = 'INITIALIZATION_FAILED',
-    EXECUTION_FAILED = 'EXECUTION_FAILED',
-    TOOL_LOAD_FAILED = 'TOOL_LOAD_FAILED',
-    VALIDATION_FAILED = 'VALIDATION_FAILED',
-    CONSENSUS_TIMEOUT = 'CONSENSUS_TIMEOUT',
-    STATE_CORRUPTED = 'STATE_CORRUPTED',
-}
+ConsensusStateType (状态树)
+├── MessagesAnnotation (消息列表 - LangGraph 内置)
+├── SubAgentAnnotation (子 Agent 调用记录)
+└── 自定义字段 (topic, action, stage, ...)
 ```
 
-**Step 2: 添加 AgentError 类**
+### 3. 可扩展性
+- `tools` 使用 `Record<string, boolean>` 支持动态工具
+- `context` 使用 `Record<string, unknown>` 支持任意元数据
+- `agentConfigs` 使用数组支持动态参与者
 
-```typescript
-/**
- * Agent 错误类
- */
-export class AgentError extends Error {
-    constructor(
-        message: string,
-        public code: AgentErrorCode,
-        public details?: Record<string, unknown>
-    ) {
-        super(message);
-        this.name = 'AgentError';
-    }
-}
-```
+---
 
-**Step 3: 运行类型检查**
+## 与计划的差异
 
+| 计划 | 实际实现 | 说明 |
+|------|---------|------|
+| `ToolsConfig` 接口 | `Record<string, boolean>` | 简化设计，更灵活 |
+| `AgentConfig.tools` 数组 | `Record<string, boolean>` | 改为工具开关配置 |
+| `AgentExecutionContext` | 已实现 | ✅ 一致 |
+| `VoteResult.option` | `VoteRecord.agree: boolean` | 简化为布尔值 |
+| `ConsensusResult` | 未使用 | 内联在状态中 |
+
+---
+
+## 类型检查
+
+运行类型检查：
 ```bash
 cd server && pnpm exec tsc --noEmit
 ```
 
-Expected: No errors
-
-**Step 4: 提交**
-
-```bash
-git add server/src/agent/types.ts
-git commit -m "feat: add agent error types"
-```
-
----
-
-## 任务完成检查清单
-
-- [ ] ToolsConfig 接口定义完成
-- [ ] AgentConfig.tools 字段更新为对象类型
-- [ ] AgentExecutionContext 接口定义完成
-- [ ] 投票相关类型定义完成
-- [ ] 错误类型定义完成
-- [ ] 所有类型检查通过
-- [ ] 所有更改已提交
+预期结果: ✅ 无错误

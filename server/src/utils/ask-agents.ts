@@ -21,7 +21,7 @@ const schema = z.object({
         .string()
         .optional()
         .describe('The task id to ask the subagent, if not provided, will use the tool call id'),
-    subagent_id: z.string(),
+    subagent_id: z.string().optional(),
     task_description: z.string().describe('Describe the user state and what you want the subagent to do.'),
     data_transfer: z.any().optional().describe('Data to transfer to the subagent.'),
 });
@@ -31,39 +31,43 @@ export const ask_subagents = (
     options?: {
         name?: string;
         description?: string;
-        pass_through_keys?: string[];
+        passThroughKeys?: string[];
+        /**
+         * 消息过滤策略
+         * - 'all': 传递所有消息
+         * - 'discussion': 只传递讨论相关的消息（HumanMessage, AIMessage），过滤主持人的工具调用
+         * - 'user': 只传递用户的消息
+         */
+        messageFilter?: 'all' | 'discussion' | 'user';
     },
 ) =>
     tool(
         async (args, config: ToolRuntime<typeof SubAgentStateSchema, any>) => {
             const state = config.state;
-            const taskId: string = args.task_id || config.toolCall!.id!;
-            let sub_state = {
-                messages: [] as Message[],
+            const taskId: string = args.task_id || config.toolCallId;
+
+            // 根据过滤策略选择消息
+            const sub_state = {
+                /** @ts-ignore */
+                messages: filterMessages(state.messages || [], options?.messageFilter || 'discussion'),
             };
-            if (taskId && (state as any)?.['task_store']?.[taskId]) {
-                sub_state = (state as any)?.['task_store'][taskId];
-            } else {
-                // 全复制状态
-                sub_state = JSON.parse(JSON.stringify(state));
-                sub_state.messages = [];
-                /** @ts-ignore 不继承 task_store 中的信息 */
-                sub_state.task_store = {};
+
+            // 传递其他重要状态字段（如果有配置的话）
+            if (options?.passThroughKeys) {
+                options.passThroughKeys.forEach((key) => {
+                    if (key in state) {
+                        sub_state[key] = state[key];
+                    }
+                });
             }
 
             const agent = await agentCreator(taskId, args, state);
-            sub_state.messages.push(new HumanMessage({ content: args.task_description }));
-            if (args.data_transfer) {
-                sub_state.messages.push(
-                    new HumanMessage({
-                        content: `Here is the data to help you complete the task: ${JSON.stringify(
-                            args.data_transfer,
-                            null,
-                            2,
-                        )}`,
-                    }),
-                );
-            }
+            sub_state.messages.push(
+                new HumanMessage({
+                    content: args.task_description,
+                }),
+            );
+
             const new_state = await agent.invoke(sub_state);
             const last_message = new_state['messages'].at(-1);
 
@@ -76,12 +80,13 @@ export const ask_subagents = (
                     {
                         role: 'tool',
                         content: `task_id: ${taskId}\n---\n` + (last_message?.text || ''),
-                        tool_call_id: config.toolCall!.id!,
+                        tool_call_id: config.toolCallId!,
                     },
                 ],
             };
 
-            options?.pass_through_keys?.forEach((key) => {
+            // 如果配置了 pass_through_keys，将子 agent 的某些状态更新传回父状态
+            options?.passThroughKeys?.forEach((key) => {
                 if (key in new_state) {
                     update[key] = new_state[key];
                 }
@@ -97,3 +102,29 @@ export const ask_subagents = (
             schema,
         },
     );
+
+/**
+ * 根据过滤策略筛选消息
+ */
+function filterMessages(messages: Message[], filter: 'all' | 'discussion' | 'user'): Message[] {
+    switch (filter) {
+        case 'all':
+            return messages;
+
+        case 'discussion':
+            // 只传递讨论相关的消息：HumanMessage 和 AIMessage
+            // 过滤掉主持人的工具调用消息（role: 'tool'）
+            return messages.filter(
+                (msg) =>
+                    msg.constructor.name === 'HumanMessage' ||
+                    (msg.constructor.name === 'AIMessage' && !('_tool_calls' in msg) && !('tool_calls' in msg)),
+            );
+
+        case 'user':
+            // 只传递用户的消息
+            return messages.filter((msg) => msg.constructor.name === 'HumanMessage');
+
+        default:
+            return messages;
+    }
+}

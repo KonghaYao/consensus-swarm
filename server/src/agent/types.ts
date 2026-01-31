@@ -105,11 +105,58 @@ export interface StandardAgent {
 }
 
 /**
+ * Agent 执行上下文
+ */
+export interface AgentExecutionContext {
+    currentRound: number;
+    maxRounds: number;
+    stage: string;
+    action: string;
+    topic: string;
+    otherAgents: Array<{ id: string; name: string }>;
+}
+
+/**
  * Agent 执行输入
  */
 export interface AgentInput {
     messages: BaseMessage[];
     context?: Record<string, unknown>;
+    executionContext?: AgentExecutionContext;
+}
+
+/**
+ * 投票选项
+ */
+export enum VoteOption {
+    AGREE = 'agree',
+    DISAGREE = 'disagree',
+    ABSTAIN = 'abstain',
+}
+
+/**
+ * 投票结果
+ */
+export interface VoteResult {
+    agentId: string;
+    agentName: string;
+    option: VoteOption;
+    reason?: string;
+    timestamp: number;
+}
+
+/**
+ * 共识结果
+ */
+export interface ConsensusResult {
+    reached: boolean;
+    voteCounts: {
+        agree: number;
+        disagree: number;
+        abstain: number;
+    };
+    threshold: number;
+    timestamp: number;
 }
 
 /** langchain 的 Tool 定义非常混乱，暂时先屏蔽这个问题 */
