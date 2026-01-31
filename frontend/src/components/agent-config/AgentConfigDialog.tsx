@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react';
 import type { AgentConfig } from '@/lib/agent-data-service';
 import { createAgentAsync, updateAgentAsync } from '@/lib/agent-data-service';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+} from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -67,7 +67,7 @@ export function AgentConfigDialog({ open, onOpenChange, agent }: AgentConfigDial
 
   const handleSave = async () => {
     if (!name.trim() || !description.trim() || !perspective.trim()) {
-      alert('Please fill in all required fields');
+      alert('请填写所有必填字段');
       return;
     }
 
@@ -98,7 +98,7 @@ export function AgentConfigDialog({ open, onOpenChange, agent }: AgentConfigDial
 
       onOpenChange(false);
     } catch (error: any) {
-      alert(`Failed to save agent: ${error.message}`);
+      alert(`保存 Agent 失败：${error.message}`);
     } finally {
       setSaving(false);
     }
@@ -109,67 +109,67 @@ export function AgentConfigDialog({ open, onOpenChange, agent }: AgentConfigDial
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{agent ? 'Edit Agent' : 'Create Agent'}</DialogTitle>
-        </DialogHeader>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>{agent ? '编辑 Agent' : '创建 Agent'}</SheetTitle>
+        </SheetHeader>
 
-        <div className="space-y-4 py-4">
-          {/* Role Section */}
+        <div className="space-y-6 py-6">
+          {/* 角色配置 */}
           <div className="space-y-3">
-            <h3 className="font-semibold text-sm">Role Configuration</h3>
+            <h3 className="font-semibold text-sm">角色配置</h3>
 
             <div className="space-y-2">
-              <Label htmlFor="name">Name *</Label>
+              <Label htmlFor="name">名称 *</Label>
               <Input
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Agent role name"
+                placeholder="Agent 角色名称"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Description *</Label>
+              <Label htmlFor="description">描述 *</Label>
               <Textarea
                 id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Brief description of this role"
+                placeholder="简要描述此角色"
                 rows={2}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="perspective">Perspective *</Label>
+              <Label htmlFor="perspective">视角 *</Label>
               <Textarea
                 id="perspective"
                 value={perspective}
                 onChange={(e) => setPerspective(e.target.value)}
-                placeholder="The perspective this agent takes in discussions"
-                rows={2}
+                placeholder="该 Agent 在讨论中的立场和视角"
+                rows={3}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="systemPrompt">System Prompt</Label>
+              <Label htmlFor="systemPrompt">系统提示词</Label>
               <Textarea
                 id="systemPrompt"
                 value={systemPrompt}
                 onChange={(e) => setSystemPrompt(e.target.value)}
-                placeholder="System prompt for this agent"
+                placeholder="该 Agent 的系统提示词"
                 rows={4}
               />
             </div>
           </div>
 
-          {/* Model Section */}
+          {/* 模型配置 */}
           <div className="space-y-3">
-            <h3 className="font-semibold text-sm">Model Configuration</h3>
+            <h3 className="font-semibold text-sm">模型配置</h3>
 
             <div className="space-y-2">
-              <Label htmlFor="provider">Provider *</Label>
+              <Label htmlFor="provider">服务商 *</Label>
               <Select value={provider} onValueChange={(value: any) => setProvider(value)}>
                 <SelectTrigger>
                   <SelectValue />
@@ -183,7 +183,7 @@ export function AgentConfigDialog({ open, onOpenChange, agent }: AgentConfigDial
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="model">Model *</Label>
+              <Label htmlFor="model">模型 *</Label>
               <Select value={model} onValueChange={setModel}>
                 <SelectTrigger>
                   <SelectValue />
@@ -219,15 +219,15 @@ export function AgentConfigDialog({ open, onOpenChange, agent }: AgentConfigDial
                   onCheckedChange={(checked: any) => setEnableThinking(checked)}
                 />
                 <Label htmlFor="enableThinking" className="cursor-pointer">
-                  Enable Thinking
+                  启用思考模式
                 </Label>
               </div>
             </div>
           </div>
 
-          {/* Tools Section */}
+          {/* 工具配置 */}
           <div className="space-y-3">
-            <h3 className="font-semibold text-sm">Tools</h3>
+            <h3 className="font-semibold text-sm">工具</h3>
             <div className="space-y-2">
               {availableTools.map((tool) => (
                 <div key={tool} className="flex items-center space-x-2">
@@ -245,15 +245,15 @@ export function AgentConfigDialog({ open, onOpenChange, agent }: AgentConfigDial
           </div>
         </div>
 
-        <DialogFooter>
+        <SheetFooter className="mt-auto">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Cancel
+            取消
           </Button>
           <Button onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : 'Save'}
+            {saving ? '保存中…' : '保存'}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }

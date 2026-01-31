@@ -1,5 +1,6 @@
 
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { HomePage } from './pages/HomePage';
 import { ChatPage } from './pages/ChatPage';
 import { AgentConfigPage } from './pages/AgentConfigPage';
 import { Toaster } from './components/ui/sonner';
@@ -13,7 +14,8 @@ function App() {
       <SubmessagesDrawerProvider>
         <Routes>
           <Route path="/" element={<Layout />}>
-            <Route index element={<ChatPage />} />
+            <Route index element={<HomePage />} />
+            <Route path="chat" element={<ChatPage />} />
             <Route path="agents" element={<AgentConfigPage />} />
             {/* 404 重定向 */}
             <Route path="*" element={<Navigate to="/" replace />} />

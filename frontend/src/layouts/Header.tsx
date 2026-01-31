@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { MessageSquare, Settings } from 'lucide-react';
+import { MessageSquare, Settings, Home } from 'lucide-react';
 
 export interface HeaderProps {
   className?: string;
@@ -23,7 +23,8 @@ export const Header: React.FC<HeaderProps> = ({
   // 默认标题根据路径生成
   const defaultTitle = React.useMemo(() => {
     const path = location.pathname;
-    if (path === '/') return '聊天';
+    if (path === '/') return '首页';
+    if (path === '/chat') return '聊天';
     if (path.startsWith('/config')) return '配置';
     if (path.startsWith('/skills')) return 'Skills 管理';
     if (path.startsWith('/plugins')) return '插件管理';
@@ -35,7 +36,8 @@ export const Header: React.FC<HeaderProps> = ({
   const displayTitle = title || defaultTitle;
 
   const navLinks = [
-    { path: '/', label: '聊天', icon: MessageSquare },
+    { path: '/', label: '首页', icon: Home },
+    { path: '/chat', label: '聊天', icon: MessageSquare },
     { path: '/agents', label: 'Agent 配置', icon: Settings },
   ];
 
@@ -45,7 +47,8 @@ export const Header: React.FC<HeaderProps> = ({
         <div>
           <h2 className="text-2xl font-bold text-gray-800">{displayTitle}</h2>
           <p className="text-sm text-gray-500 mt-1">
-            {location.pathname === '/' && '与 AI 助手对话'}
+            {location.pathname === '/' && '多 Agent 共识系统'}
+            {location.pathname === '/chat' && '与 AI 助手对话'}
             {location.pathname.startsWith('/config') && '管理系统配置'}
             {location.pathname.startsWith('/skills') && '管理 AI Skills'}
             {location.pathname.startsWith('/plugins') && '管理插件'}

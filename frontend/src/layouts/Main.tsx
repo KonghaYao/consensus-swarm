@@ -12,7 +12,7 @@ export interface MainProps {
 
 export const Main: React.FC<MainProps> = ({ className = '', children }) => {
   return (
-    <main className={`flex-1 overflow-auto bg-gray-50 ${className}`}>
+    <main className={`flex-1 overflow-auto ${className}`}>
       {children}
     </main>
   );
