@@ -12,6 +12,7 @@ import {
   ChatInput,
   ChatHeader,
   MeetingInitForm,
+  HistorySidebar,
 } from '../components/chat';
 import DefaultTools from '../tools';
 import { getAgents, type AgentConfig } from '@/lib/agent-data-service';
@@ -26,6 +27,7 @@ export function ChatPage() {
     sendMessage,
     setTools,
     createNewChat,
+    toHistoryChat,
   } = useChat();
   const { extraParams } = useSettings();
 
@@ -38,6 +40,7 @@ export function ChatPage() {
     context: string;
     selectedAgents: AgentConfig[];
   } | null>(null);
+  const [historyCollapsed, setHistoryCollapsed] = useState(false);
 
   // 使用 ref 存储 extraParams，避免依赖变化
   const extraParamsRef = useRef(extraParams);
@@ -143,60 +146,90 @@ ${data.context ? `**背景信息：**\n${data.context}\n` : ''}请各位发表�
     setMeetingConfig(null);
   }, [createNewChat]);
 
+  const handleToggleHistory = useCallback(() => {
+    setHistoryCollapsed(prev => !prev);
+  }, []);
+
+  // 切换到历史对话后，确保进入聊天界面
+  const handleSelectHistory = useCallback(async (thread: any) => {
+    await toHistoryChat(thread);
+    setIsInitialized(true);
+  }, [toHistoryChat]);
+
   // 如果还没初始化，显示初始化表单
   if (!isInitialized) {
     return (
-      <div className="h-full flex flex-col bg-background overflow-hidden">
-        <ChatHeader
-          hasMessages={false}
-          loading={loading}
-          onRegenerate={handleRegenerate}
-          onClear={handleClear}
-          showAgentSelector={false}
+      <div className="h-full flex bg-background overflow-hidden">
+        {/* 侧边栏 */}
+        <HistorySidebar
+          collapsed={historyCollapsed}
+          onToggleCollapse={handleToggleHistory}
+          onSelectThread={handleSelectHistory}
         />
-        <div className="flex-1 overflow-y-auto">
-          <MeetingInitForm agents={agents} onSubmit={handleMeetingInit} />
+
+        {/* 主内容区 */}
+        <div className="flex-1 flex flex-col">
+          <ChatHeader
+            hasMessages={false}
+            loading={loading}
+            onRegenerate={handleRegenerate}
+            onClear={handleClear}
+            showAgentSelector={false}
+          />
+          <div className="flex-1 overflow-y-auto">
+            <MeetingInitForm agents={agents} onSubmit={handleMeetingInit} />
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col bg-background">
-      {/* 顶部操作栏 */}
-      <ChatHeader
-        hasMessages={renderMessages.length > 0}
-        loading={loading}
-        onRegenerate={handleRegenerate}
-        onClear={handleClear}
-        agents={agents}
-        selectedAgentId={selectedAgentId}
-        onAgentChange={handleAgentChange}
-        showAgentSelector={true}
+    <div className="h-full flex bg-background">
+      {/* 侧边栏 */}
+      <HistorySidebar
+        collapsed={historyCollapsed}
+        onToggleCollapse={handleToggleHistory}
+        onSelectThread={handleSelectHistory}
       />
 
-      {/* 消息区域 */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-3xl mx-auto px-4 py-8">
-          {renderMessages.length === 0 ? (
-            <WelcomeState />
-          ) : (
-            <MessageList messages={renderMessages} loading={loading} />
-          )}
+      {/* 主内容区 */}
+      <div className="flex-1 flex flex-col">
+        {/* 顶部操作栏 */}
+        <ChatHeader
+          hasMessages={renderMessages.length > 0}
+          loading={loading}
+          onRegenerate={handleRegenerate}
+          onClear={handleClear}
+          agents={agents}
+          selectedAgentId={selectedAgentId}
+          onAgentChange={handleAgentChange}
+          showAgentSelector={true}
+        />
 
-          {inChatError && <ErrorMessage message={inChatError} />}
+        {/* 消息区域 */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-3xl mx-auto px-4 py-8">
+            {renderMessages.length === 0 ? (
+              <WelcomeState />
+            ) : (
+              <MessageList messages={renderMessages} loading={loading} />
+            )}
+
+            {inChatError && <ErrorMessage message={inChatError} />}
+          </div>
         </div>
-      </div>
 
-      {/* 输入区域 */}
-      <ChatInput
-        value={userInput}
-        onChange={setUserInput}
-        onSend={handleSend}
-        disabled={false}
-        loading={loading}
-        placeholder="输入消息..."
-      />
+        {/* 输入区域 */}
+        <ChatInput
+          value={userInput}
+          onChange={setUserInput}
+          onSend={handleSend}
+          disabled={false}
+          loading={loading}
+          placeholder="输入消息..."
+        />
+      </div>
     </div>
   );
 }

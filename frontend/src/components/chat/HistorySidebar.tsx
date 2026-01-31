@@ -12,6 +12,7 @@ import { useChat } from '@langgraph-js/sdk/react';
 interface HistorySidebarProps {
   collapsed?: boolean;
   onToggleCollapse?: () => void;
+  onSelectThread?: (thread: any) => void;
 }
 
 /**
@@ -37,7 +38,7 @@ function formatTime(dateString: string): string {
   });
 }
 
-export function HistorySidebar({ collapsed = false, onToggleCollapse }: HistorySidebarProps) {
+export function HistorySidebar({ collapsed = false, onToggleCollapse, onSelectThread }: HistorySidebarProps) {
   const {
     historyList,
     currentChatId,
@@ -76,6 +77,10 @@ export function HistorySidebar({ collapsed = false, onToggleCollapse }: HistoryS
   // 切换到历史对话
   const handleSelectThread = async (thread: any) => {
     await toHistoryChat(thread);
+    // 调用外部回调（如果有）
+    if (onSelectThread) {
+      onSelectThread(thread);
+    }
   };
 
   // 创建新对话
