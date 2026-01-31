@@ -1,31 +1,46 @@
-import React from 'react';
-import { cn } from '@/lib/utils';
 import { Avatar } from './Avatar';
 import { MessageActions } from './MessageActions';
+import { ThinkingMessage } from './ThinkingMessage';
 import { Streamdown } from 'streamdown';
 import { code } from '@streamdown/code';
 import { math } from '@streamdown/math';
 import { cjk } from '@streamdown/cjk';
+import { getTextContent, getThinkingContent, type RenderMessage } from '@langgraph-js/sdk';
+import { getAgentByName } from '@/lib/agent-data-service';
 
 interface BotMessageProps {
-  content: string;
-  onCopy?: () => void;
+  message: RenderMessage;
 }
 
-export function BotMessage({ content, onCopy }: BotMessageProps) {
+export function BotMessage({ message }: BotMessageProps) {
+  const thinking = getThinkingContent(message);
+  const text = getTextContent(message);
+
+  // 确保 thinking 是字符串
+  const thinkingStr = typeof thinking === 'string' ? thinking : '';
+  const hasThinking = thinkingStr.trim().length > 0;
+  const content = hasThinking ? `${thinkingStr}\n\n${text}` : text;
+
+  // 获取 agent 信息用于显示头像
+  const agent = message.name ? getAgentByName(message.name) : undefined;
+  const agentName = agent?.role.name || message.name || 'AI Agent';
+  const avatarSrc = agent?.avatar;
+
   return (
     <div className="flex gap-4 group justify-start">
-      <Avatar type="bot" />
+      <Avatar type="bot" src={avatarSrc} alt={agentName} />
 
-      <div className="flex-1 max-w-[85%] space-y-2">
+      <div className="flex-1 max-w-[85%] space-y-3">
         <div className="flex items-center gap-2">
-          <div className="text-sm text-foreground">Zen Worker</div>
-          <MessageActions content={content} isHuman={false} />
+          <div className="text-sm text-foreground">{agentName}</div>
+          <MessageActions content={text} isHuman={false} />
         </div>
+
+        {hasThinking && <ThinkingMessage content={thinkingStr} />}
 
         <div className="text-base leading-relaxed">
           <div className="prose prose-sm dark:prose-invert max-w-none">
-            <Streamdown plugins={{ code, math, cjk }}>{content}</Streamdown>
+            <Streamdown plugins={{ code, math, cjk }}>{text}</Streamdown>
           </div>
         </div>
       </div>

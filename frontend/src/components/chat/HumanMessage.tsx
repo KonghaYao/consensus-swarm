@@ -2,13 +2,15 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import { Avatar } from './Avatar';
 import { MessageActions } from './MessageActions';
+import { getTextContent, type RenderMessage } from '@langgraph-js/sdk';
 
 interface HumanMessageProps {
-  content: string;
-  onCopy?: () => void;
+  message: RenderMessage;
 }
 
-export function HumanMessage({ content, onCopy }: HumanMessageProps) {
+export function HumanMessage({ message }: HumanMessageProps) {
+  const content = getTextContent(message);
+
   return (
     <div className="flex gap-4 group justify-end">
       <div className="flex-1 max-w-[85%] flex flex-col items-end space-y-2">

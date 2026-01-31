@@ -1,0 +1,251 @@
+// Types shared with backend
+export interface ModelConfig {
+  provider: 'anthropic' | 'openai' | 'google';
+  model: string;
+  temperature?: number;
+  maxTokens?: number;
+  enableThinking?: boolean;
+  thinkingTokens?: number;
+}
+
+export interface AgentRoleConfig {
+  id: string;
+  name: string;
+  description: string;
+  perspective: string;
+  systemPrompt?: string;
+}
+
+export interface AgentConfig {
+  id: string;
+  role: AgentRoleConfig;
+  model: ModelConfig;
+  tools: Record<string, boolean>;
+  contextTemplate?: string;
+  avatar?: string;
+}
+
+/**
+ * 生成 agent 的头像 URL（使用 DiceBear API）
+ */
+function generateAvatarUrl(agentId: string, agentName: string): string {
+  // 使用 notionists 风格（简笔画风格，类似 Notion 插图）
+  // seed 使用 agent id 确保每次生成的头像一致
+  return `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(agentId)}`;
+}
+
+// Initial data from backend config files (mirrored)
+const masterAgentConfig: AgentConfig = {
+  id: 'master',
+  role: {
+    id: 'master',
+    name: '主持人',
+    description: '会议主持人，负责控制流程、分配任务、整合结果',
+    perspective: '确保会议流程有序进行，让每位参与者充分表达意见，最终达成共识',
+    systemPrompt: `你是此次会议的主持人，负责协调多智能体讨论并达成共识。`,
+  },
+  model: {
+    provider: 'openai',
+    model: 'mimo-v2-flash',
+    temperature: 0.7,
+    enableThinking: true,
+  },
+  tools: {},
+  avatar: generateAvatarUrl('master', '主持人'),
+};
+
+const subAgentConfigs: AgentConfig[] = [
+  {
+    id: 'technical-director',
+    role: {
+      id: 'technical-director',
+      name: '技术总监',
+      description: '负责技术架构、技术选型和技术决策',
+      perspective: '从技术可行性、性能、安全性和可维护性角度评估方案',
+    },
+    model: {
+      provider: 'openai',
+      model: 'mimo-v2-flash',
+      temperature: 0.7,
+    },
+    tools: {},
+    avatar: generateAvatarUrl('technical-director', '技术总监'),
+  },
+  {
+    id: 'product-manager',
+    role: {
+      id: 'product-manager',
+      name: '产品经理',
+      description: '负责产品需求、用户体验和产品规划',
+      perspective: '从用户需求、产品价值和市场竞争力角度思考问题',
+    },
+    model: {
+      provider: 'openai',
+      model: 'mimo-v2-flash',
+      temperature: 0.7,
+    },
+    tools: {},
+    avatar: generateAvatarUrl('product-manager', '产品经理'),
+  },
+  {
+    id: 'team-lead',
+    role: {
+      id: 'team-lead',
+      name: '团队负责人',
+      description: '负责团队管理和项目协调',
+      perspective: '平衡技术需求与团队资源，确保项目按时交付',
+    },
+    model: {
+      provider: 'openai',
+      model: 'mimo-v2-flash',
+      temperature: 0.7,
+    },
+    tools: {},
+    avatar: generateAvatarUrl('team-lead', '团队负责人'),
+  },
+  {
+    id: 'backend-engineer',
+    role: {
+      id: 'backend-engineer',
+      name: '后端工程师',
+      description: '负责后端开发和 API 设计',
+      perspective: '关注后端架构、API 设计、数据库和服务端性能',
+    },
+    model: {
+      provider: 'openai',
+      model: 'mimo-v2-flash',
+      temperature: 0.7,
+    },
+    tools: {},
+    avatar: generateAvatarUrl('backend-engineer', '后端工程师'),
+  },
+  {
+    id: 'frontend-engineer',
+    role: {
+      id: 'frontend-engineer',
+      name: '前端工程师',
+      description: '负责前端开发和用户界面实现',
+      perspective: '关注前端技术栈、用户体验和界面交互',
+    },
+    model: {
+      provider: 'openai',
+      model: 'mimo-v2-flash',
+      temperature: 0.7,
+    },
+    tools: {},
+    avatar: generateAvatarUrl('frontend-engineer', '前端工程师'),
+  },
+  {
+    id: 'ui-ux-designer',
+    role: {
+      id: 'ui-ux-designer',
+      name: 'UI/UX 设计师',
+      description: '负责界面设计和用户体验设计',
+      perspective: '从视觉设计和用户体验角度评估产品',
+    },
+    model: {
+      provider: 'openai',
+      model: 'mimo-v2-flash',
+      temperature: 0.7,
+    },
+    tools: {},
+    avatar: generateAvatarUrl('ui-ux-designer', 'UI/UX设计师'),
+  },
+  {
+    id: 'operations-specialist',
+    role: {
+      id: 'operations-specialist',
+      name: '运维专家',
+      description: '负责系统运维和部署',
+      perspective: '关注系统稳定性、可部署性和运维效率',
+    },
+    model: {
+      provider: 'openai',
+      model: 'mimo-v2-flash',
+      temperature: 0.7,
+    },
+    tools: {},
+    avatar: generateAvatarUrl('operations-specialist', '运维专家'),
+  },
+  {
+    id: 'data-analyst',
+    role: {
+      id: 'data-analyst',
+      name: '数据分析师',
+      description: '负责数据分析和数据洞察',
+      perspective: '从数据角度分析问题，提供数据支持',
+    },
+    model: {
+      provider: 'openai',
+      model: 'mimo-v2-flash',
+      temperature: 0.7,
+    },
+    tools: {},
+    avatar: generateAvatarUrl('data-analyst', '数据分析师'),
+  },
+  {
+    id: 'marketing-manager',
+    role: {
+      id: 'marketing-manager',
+      name: '市场经理',
+      description: '负责市场营销和推广策略',
+      perspective: '从市场需求和品牌角度思考问题',
+    },
+    model: {
+      provider: 'openai',
+      model: 'mimo-v2-flash',
+      temperature: 0.7,
+    },
+    tools: {},
+    avatar: generateAvatarUrl('marketing-manager', '市场经理'),
+  },
+];
+
+// Initial data from backend config files
+const initialAgents: AgentConfig[] = [
+  masterAgentConfig,
+  ...subAgentConfigs,
+];
+
+// In-memory state
+let agents: AgentConfig[] = [...initialAgents];
+
+// CRUD operations
+export function getAgents(): AgentConfig[] {
+  return agents;
+}
+
+export function getAgentById(id: string): AgentConfig | undefined {
+  return agents.find((agent) => agent.id === id);
+}
+
+export function getAgentByName(name: string): AgentConfig | undefined {
+  return agents.find((agent) => agent.role.name === name);
+}
+
+export function createAgent(agent: Omit<AgentConfig, 'id'>): AgentConfig {
+  const newAgent: AgentConfig = {
+    ...agent,
+    id: `agent-${Date.now()}`,
+  };
+  agents.push(newAgent);
+  return newAgent;
+}
+
+export function updateAgent(id: string, updates: Partial<AgentConfig>): AgentConfig | null {
+  const index = agents.findIndex((agent) => agent.id === id);
+  if (index === -1) return null;
+
+  agents[index] = { ...agents[index], ...updates };
+  return agents[index];
+}
+
+export function deleteAgent(id: string): boolean {
+  const initialLength = agents.length;
+  agents = agents.filter((agent) => agent.id !== id);
+  return agents.length < initialLength;
+}
+
+export function resetAgents(): void {
+  agents = [...initialAgents];
+}
