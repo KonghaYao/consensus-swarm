@@ -6,6 +6,8 @@ import { BaseMessage } from '@langchain/core/messages';
 import { createState, createDefaultAnnotation } from '@langgraph-js/pro';
 import { MessagesAnnotation } from '@langchain/langgraph';
 import { AgentConfig } from './types.js';
+import { teamLeadConfig } from '../config/agents/team-lead.js';
+import { backendEngineerConfig } from '../config/agents/backend-engineer.js';
 
 /**
  * 会议动作（Agent 根据此字段决定执行什么操作）
@@ -97,7 +99,7 @@ export const ConsensusAnnotation = createState(MessagesAnnotation).build({
     context: createDefaultAnnotation(() => ({})),
 
     /** Agent 配置列表 - 所有参与者的完整配置 */
-    agentConfigs: createDefaultAnnotation(() => [] as AgentConfig[]),
+    agentConfigs: createDefaultAnnotation(() => [teamLeadConfig, backendEngineerConfig] as AgentConfig[]),
 
     /**
      * 当前动作 - 主持人 Agent 根据此字段决定执行什么操作

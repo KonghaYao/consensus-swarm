@@ -33,7 +33,7 @@ async function consensusAgentFunction(state: ConsensusStateType): Promise<Partia
                 });
             },
             {
-                name: agentConfig.role.name,
+                name: `ask_${agentConfig.role.id}_speak`,
                 description: agentConfig.role.description,
             },
         );
@@ -78,7 +78,6 @@ async function consensusAgentFunction(state: ConsensusStateType): Promise<Partia
  */
 export function createConsensusGraph() {
     const graph = new StateGraph(ConsensusAnnotation).addNode('agent', consensusAgentFunction).addEdge(START, 'agent');
-
     return graph.compile();
 }
 
