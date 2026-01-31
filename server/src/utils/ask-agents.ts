@@ -47,7 +47,8 @@ export const ask_subagents = (
             const taskId: string = args.task_id || config.toolCallId;
 
             // 根据过滤策略选择消息
-            const sub_state: any = {
+            const sub_state = {
+                /** @ts-ignore */
                 messages: filterMessages(state.messages || [], options?.messageFilter || 'discussion'),
             };
 
@@ -79,7 +80,7 @@ export const ask_subagents = (
                     {
                         role: 'tool',
                         content: `task_id: ${taskId}\n---\n` + (last_message?.text || ''),
-                        tool_call_id: config.toolCall!.id!,
+                        tool_call_id: config.toolCallId!,
                     },
                 ],
             };

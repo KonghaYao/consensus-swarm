@@ -1,477 +1,376 @@
-# Phase 1.3: Standard Agent 完善
+# Phase 1: 后端 Agent 实现
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** 完善标准化 Agent 实现，添加配置验证、缓存和错误处理
+**Goal:** 完成后端多智能体共识系统
 
-**Architecture:** 基于 LangChain Agent 的封装层，提供统一的接口
+**Architecture:** 基于 LangGraph + LangChain 的单 Agent Function 架构
 
-**Tech Stack:** TypeScript, LangChain
+**Tech Stack:** TypeScript, LangGraph, LangChain, Anthropic SDK
 
 ---
 
-### Task 1: 添加配置验证
+## 实现状态
 
-**Files:**
-- Create: `server/src/agent/agent-validator.ts`
+**已完成 (2025-01-31)**:
+- ✅ 核心类型定义 (`server/src/agent/types.ts`)
+- ✅ 共识流程图 (`server/src/agent/consensus-graph.ts`)
+- ✅ 共识状态定义 (`server/src/agent/consensus-state.ts`)
+- ✅ 标准 Agent 创建器 (`server/src/agent/standard-agent.ts`)
+- ✅ 工具注册表 (`server/src/agent/tools/registry.ts`)
+- ✅ 主持人 Agent 配置 (`server/src/config/master-agent.ts`)
+- ✅ 子 Agent 配置示例 (`server/src/config/agents/`)
 
-**Step 1: 创建配置验证器**
+**未完成**:
+- ❌ Agent 验证器
+- ❌ Agent 缓存管理器
+- ❌ Agent 日志记录器
+- ❌ 事件支持
+
+---
+
+## 架构设计
+
+### 单 Agent Function 模式
 
 ```typescript
-import { z } from 'zod';
-import { AgentConfig, AgentErrorCode, AgentError } from './types.js';
+// server/src/agent/consensus-graph.ts
+async function consensusAgentFunction(state: ConsensusStateType): Promise<Partial<ConsensusStateType>> {
+    // 1. 创建主持人 Agent
+    const agent = await createStandardAgent(masterAgentConfig, {
+        tools: [subAgentTools, consensusTools],
+        passThroughKeys: ['topic', 'agentConfigs', 'currentRound', ...],
+    });
 
-/**
- * AgentConfig 验证 Schema
- */
-const AgentConfigSchema = z.object({
-    id: z.string().min(1, 'Agent ID 不能为空'),
-    role: z.object({
-        name: z.string().min(1, '角色名称不能为空'),
-        description: z.string().min(1, '角色描述不能为空'),
-        perspective: z.string().min(1, '角色视角不能为空'),
-        systemPrompt: z.string().optional(),
-    }),
-    model: z.object({
-        provider: z.enum(['anthropic', 'openai', 'google']),
-        model: z.string().min(1, '模型名称不能为空'),
-        temperature: z.number().min(0).max(2).optional(),
-        maxTokens: z.number().positive().optional(),
-        enableThinking: z.boolean().optional(),
-        thinkingTokens: z.number().positive().optional(),
-    }),
-    tools: z.record(z.boolean()).default({}),
-    contextTemplate: z.string().optional(),
+    // 2. 主持人决定下一步操作
+    const newState = await agent.invoke(state);
+
+    // 3. 根据 state.action 控制流程
+    return newState;
+}
+```
+
+### 工具注册表模式
+
+```typescript
+// server/src/agent/tools/registry.ts
+class ToolRegistryManager {
+    private registry: ToolRegistry;
+
+    register(definition: ToolDefinition): void;
+    async loadFromConfig(config: Record<string, boolean>): Promise<ToolInterface[]>;
+}
+
+// 使用
+export const toolRegistry = ToolRegistryManager.getInstance();
+```
+
+### 子 Agent 调用机制
+
+```typescript
+// 通过 ask_subagents 工具调用子 Agent
+const ask_subagents = ask_subagents(
+    (task_id, args, parent_state) => {
+        return createStandardAgent(agentConfig, { task_id });
+    },
+    {
+        name: 'ask_${agentId}_speak',
+        description: agentConfig.role.description,
+        passThroughKeys: ['topic', 'context', 'agentConfigs', ...],
+        messageFilter: 'discussion', // 只传递讨论消息
+    }
+);
+```
+
+---
+
+## 核心组件
+
+### 1. 类型系统 (`server/src/agent/types.ts`)
+
+**核心接口**:
+```typescript
+export interface AgentConfig {
+    id: string;
+    role: AgentRoleConfig;
+    model: ModelConfig;
+    tools: Record<string, boolean>; // 工具开关
+    contextTemplate?: string;
+}
+
+export interface AgentRoleConfig {
+    id: string;
+    name: string;
+    description: string;
+    perspective: string;
+    systemPrompt?: string;
+}
+
+export interface ModelConfig {
+    provider: 'anthropic' | 'openai' | 'google';
+    model: string;
+    temperature?: number;
+    maxTokens?: number;
+    enableThinking?: boolean;
+    thinkingTokens?: number;
+}
+```
+
+**共识相关类型**:
+```typescript
+export interface VoteRecord {
+    agentId: string;
+    agentName: string;
+    agree: boolean;
+    reason?: string;
+    timestamp: number;
+}
+
+export interface ConsensusResult {
+    reached: boolean;
+    voteCounts: { agree: number; disagree: number; abstain: number };
+    threshold: number;
+    timestamp: number;
+}
+```
+
+### 2. 共识状态 (`server/src/agent/consensus-state.ts`)
+
+**状态定义**:
+```typescript
+export const ConsensusAnnotation = createState(MessagesAnnotation, SubAgentAnnotation).build({
+    topic: createDefaultAnnotation(() => ''),
+    context: createDefaultAnnotation(() => ({})),
+    agentConfigs: createDefaultAnnotation(() => [teamLeadConfig, backendEngineerConfig]),
+    action: createDefaultAnnotation(() => MeetingAction.INITIALIZE),
+    stage: createDefaultAnnotation(() => MeetingStage.INITIAL),
+    rounds: createDefaultAnnotation(() => [] as RoundInfo[]),
+    currentRound: createDefaultAnnotation(() => 0),
+    maxRounds: createDefaultAnnotation(() => 5),
+    consensusThreshold: createDefaultAnnotation(() => 1.0),
+    summary: createDefaultAnnotation(() => ''),
+    error: createDefaultAnnotation(() => ''),
 });
-
-/**
- * 验证 Agent 配置
- */
-export function validateAgentConfig(config: AgentConfig): void {
-    try {
-        AgentConfigSchema.parse(config);
-    } catch (error) {
-        if (error instanceof z.ZodError) {
-            const errors = error.errors.map(e => e.message).join(', ');
-            throw new AgentError(
-                `配置验证失败: ${errors}`,
-                AgentErrorCode.VALIDATION_FAILED,
-                { errors: error.errors }
-            );
-        }
-        throw error;
-    }
-}
-
-/**
- * 验证 Agent 配置列表
- */
-export function validateAgentConfigs(configs: AgentConfig[]): void {
-    const ids = new Set<string>();
-    for (const config of configs) {
-        validateAgentConfig(config);
-
-        // 检查 ID 唯一性
-        if (ids.has(config.id)) {
-            throw new AgentError(
-                `重复的 Agent ID: ${config.id}`,
-                AgentErrorCode.VALIDATION_FAILED
-            );
-        }
-        ids.add(config.id);
-    }
-}
 ```
 
-**Step 2: 提交**
-
-```bash
-git add server/src/agent/agent-validator.ts
-git commit -m "feat: add agent config validator"
-```
-
----
-
-### Task 2: 添加 Agent 缓存机制
-
-**Files:**
-- Create: `server/src/agent/agent-cache.ts`
-
-**Step 1: 创建 Agent 缓存管理器**
-
+**会议阶段**:
 ```typescript
-import { StandardAgent, AgentConfig } from './types.js';
-
-/**
- * Agent 缓存条目
- */
-interface CacheEntry {
-    agent: StandardAgent;
-    createdAt: number;
-    lastUsed: number;
+export enum MeetingStage {
+    INITIAL = 'initial',
+    DISCUSSION = 'discussion',
+    VOTING = 'voting',
+    CONSENSUS = 'consensus',
+    SUMMARY = 'summary',
+    FAILED = 'failed',
 }
-
-/**
- * Agent 缓存管理器
- */
-class AgentCacheManager {
-    private static instance: AgentCacheManager;
-    private cache: Map<string, CacheEntry>;
-    private ttl: number; // 缓存过期时间（毫秒）
-
-    private constructor(ttl: number = 30 * 60 * 1000) { // 默认 30 分钟
-        this.cache = new Map();
-        this.ttl = ttl;
-    }
-
-    static getInstance(): AgentCacheManager {
-        if (!AgentCacheManager.instance) {
-            AgentCacheManager.instance = new AgentCacheManager();
-        }
-        return AgentCacheManager.instance;
-    }
-
-    /**
-     * 获取或创建 Agent
-     */
-    async getOrCreate(
-        config: AgentConfig,
-        factory: (config: AgentConfig) => Promise<StandardAgent>
-    ): Promise<StandardAgent> {
-        const cacheKey = this.buildCacheKey(config);
-
-        // 检查缓存
-        const entry = this.cache.get(cacheKey);
-        if (entry) {
-            const now = Date.now();
-            if (now - entry.createdAt < this.ttl) {
-                entry.lastUsed = now;
-                return entry.agent;
-            } else {
-                // 缓存过期，删除
-                this.cache.delete(cacheKey);
-            }
-        }
-
-        // 创建新 Agent
-        const agent = await factory(config);
-        this.cache.set(cacheKey, {
-            agent,
-            createdAt: Date.now(),
-            lastUsed: Date.now(),
-        });
-
-        return agent;
-    }
-
-    /**
-     * 清理过期缓存
-     */
-    cleanup(): void {
-        const now = Date.now();
-        for (const [key, entry] of this.cache.entries()) {
-            if (now - entry.createdAt >= this.ttl) {
-                this.cache.delete(key);
-            }
-        }
-    }
-
-    /**
-     * 清空缓存
-     */
-    clear(): void {
-        this.cache.clear();
-    }
-
-    /**
-     * 构建缓存键
-     */
-    private buildCacheKey(config: AgentConfig): string {
-        return `${config.id}-${config.model.model}-${JSON.stringify(config.tools)}`;
-    }
-
-    /**
-     * 获取缓存大小
-     */
-    size(): number {
-        return this.cache.size;
-    }
-}
-
-export const agentCache = AgentCacheManager.getInstance();
 ```
 
-**Step 2: 提交**
+### 3. 共识流程图 (`server/src/agent/consensus-graph.ts`)
 
-```bash
-git add server/src/agent/agent-cache.ts
-git commit -m "feat: add agent cache manager"
-```
-
----
-
-### Task 3: 更新 Standard Agent 集成验证和缓存
-
-**Files:**
-- Modify: `server/src/agent/standard-agent.ts`
-
-**Step 1: 导入验证和缓存模块**
-
+**核心工具**:
 ```typescript
-import { validateAgentConfig } from './agent-validator.js';
-import { agentCache } from './agent-cache.js';
+// 让分歧者发言
+const ask_dissenting_agents_to_speak = tool(
+    async (input: { dissentingAgentIds: string[]; reason: string }) => {
+        // 邀请反对的 Agent 发表意见
+        const dissentingMessages = await Promise.all(
+            dissentingConfigs.map((config) => agent.invoke({ ... }))
+        );
+        return { message: '...', newMessages: [...] };
+    },
+    {
+        name: 'ask_dissenting_agents_to_speak',
+        description: '邀请反对的 Agent 发表详细意见',
+        schema: askDissentingAgentsToSpeakSchema,
+    }
+);
+
+// 让所有人投票
+const ask_everyone_to_vote = tool(
+    async () => {
+        const voteRecords = await Promise.all(
+            allAgents.map((agent) => agent.invoke({ ... }))
+        );
+        const consensusReached = voteRecords.every((v) => v.agree);
+        return { consensusReached, voteRecords, dissentingAgents };
+    },
+    {
+        name: 'ask_everyone_to_vote',
+        description: '请求所有 Agent 投票',
+    }
+);
 ```
 
-**Step 2: 更新 createStandardAgent 函数**
+### 4. 标准 Agent (`server/src/agent/standard-agent.ts`)
 
+**创建函数**:
 ```typescript
-export async function createStandardAgent(config: AgentConfig): Promise<StandardAgent> {
-    // 验证配置
-    validateAgentConfig(config);
+export async function createStandardAgent(
+    config: AgentConfig,
+    extraConfig?: {
+        tools?: UnionTool[];
+        task_id?: string;
+        passThroughKeys?: string[];
+    }
+) {
+    const chatModel = await initChatModel(config.model.model, {
+        modelProvider: config.model.provider,
+        temperature: config.model.temperature,
+        enableThinking: true,
+    });
 
-    // 尝试从缓存获取
-    return await agentCache.getOrCreate(config, async (cfg) => {
-        // 根据配置加载工具
-        const tools = await toolRegistry.loadFromConfig(cfg.tools);
+    const tools: UnionTool[] = [];
+    tools.push(...await toolRegistry.loadFromConfig(config.tools));
+    if (extraConfig?.tools) {
+        tools.push(...extraConfig.tools);
+    }
 
-        // 初始化聊天模型
-        const chatModel = await initChatModel(cfg.model.model, {
-            modelProvider: cfg.model.provider,
-            temperature: cfg.model.temperature,
-            maxTokens: cfg.model.maxTokens,
-            streamUsage: true,
-            enableThinking: cfg.model.enableThinking ?? true,
-        });
-
-        // 构建 LangChain Agent
-        const langchainAgent = createAgent({
-            model: chatModel,
-            tools,
-            middleware: [],
-        });
-
-        return {
-            id: cfg.id,
-            config: cfg,
-            async execute(input: AgentInput): Promise<AgentResult> {
-                const messagesWithSystem: BaseMessage[] = [
-                    new SystemMessage(buildSystemPrompt(cfg)),
-                    ...input.messages,
-                ];
-
-                const result = await langchainAgent.invoke({ messages: messagesWithSystem });
-
-                return {
-                    agentId: cfg.id,
-                    message: result.messages[result.messages.length - 1],
-                    metadata: {
-                        modelName: cfg.model.model,
-                        agentName: cfg.role.name,
-                    },
-                };
-            },
-            updateConfig(newConfig: Partial<AgentConfig>): void {
-                validateAgentConfig({ ...this.config, ...newConfig });
-                Object.assign(this.config, newConfig);
-            },
-        };
+    return createAgent({
+        name: extraConfig.task_id ? `subagent_${extraConfig.task_id}` : undefined,
+        model: chatModel,
+        tools,
+        systemPrompt: buildSystemPrompt(config),
+        stateSchema: ConsensusAnnotation,
     });
 }
 ```
 
-**Step 3: 运行类型检查**
+---
 
-```bash
-cd server && pnpm exec tsc --noEmit
+## 流程控制
+
+### 状态转换
+
+```
+INITIAL → DISCUSS → VOTE → (CONSENSUS | DISCUSS) → SUMMARY → FINISH
 ```
 
-Expected: No errors
+### 消息过滤
 
-**Step 4: 提交**
+```typescript
+// 只传递讨论消息给子 Agent（排除主持人的工具调用）
+const discussionMessages = state.messages.filter(
+    (msg) =>
+        msg.constructor.name === 'HumanMessage' ||
+        (msg.constructor.name === 'AIMessage' && !('_tool_calls' in msg))
+);
+```
 
-```bash
-git add server/src/agent/standard-agent.ts
-git commit -m "feat: integrate validation and cache with standard agent"
+### 100% 共识机制
+
+```typescript
+const consensusReached = voteRecords.every((v) => v.agree);
+if (consensusReached) {
+    state.stage = MeetingStage.SUMMARY;
+    state.action = MeetingAction.SUMMARIZE;
+} else {
+    // 继续下一轮讨论
+    state.currentRound++;
+}
 ```
 
 ---
 
-### Task 4: 添加 Agent 执行日志
+## 配置示例
 
-**Files:**
-- Create: `server/src/agent/agent-logger.ts`
-
-**Step 1: 创建 Agent 日志记录器**
+### 主持人 Agent (`server/src/config/master-agent.ts`)
 
 ```typescript
-import { AgentResult, AgentConfig } from './types.js';
-
-/**
- * Agent 执行日志
- */
-export interface AgentExecutionLog {
-    agentId: string;
-    agentName: string;
-    inputLength: number;
-    outputLength: number;
-    duration: number;
-    timestamp: number;
-    error?: string;
-}
-
-/**
- * 简单的日志管理器
- */
-class AgentLogger {
-    private logs: AgentExecutionLog[] = [];
-
-    /**
-     * 记录执行日志
-     */
-    log(
-        config: AgentConfig,
-        inputLength: number,
-        result: AgentResult,
-        duration: number,
-        error?: string
-    ): void {
-        this.logs.push({
-            agentId: config.id,
-            agentName: config.role.name,
-            inputLength,
-            outputLength: String(result.message.content).length,
-            duration,
-            timestamp: Date.now(),
-            error,
-        });
-    }
-
-    /**
-     * 获取所有日志
-     */
-    getLogs(): AgentExecutionLog[] {
-        return [...this.logs];
-    }
-
-    /**
-     * 清空日志
-     */
-    clear(): void {
-        this.logs = [];
-    }
-
-    /**
-     * 获取执行统计
-     */
-    getStats(): { total: number; success: number; failed: number; avgDuration: number } {
-        if (this.logs.length === 0) {
-            return { total: 0, success: 0, failed: 0, avgDuration: 0 };
-        }
-
-        const failed = this.logs.filter(log => log.error).length;
-        const totalDuration = this.logs.reduce((sum, log) => sum + log.duration, 0);
-
-        return {
-            total: this.logs.length,
-            success: this.logs.length - failed,
-            failed,
-            avgDuration: totalDuration / this.logs.length,
-        };
-    }
-}
-
-export const agentLogger = new AgentLogger();
+export const masterAgentConfig: AgentConfig = {
+    id: 'master',
+    role: {
+        id: 'master',
+        name: '会议主持人',
+        description: '负责引导讨论、控制流程、总结共识',
+        perspective: '中立、客观、引导式',
+        systemPrompt: `你是会议主持人，负责：
+1. 引导讨论，确保每个人发言
+2. 在适当时候发起投票
+3. 检查是否达成共识
+4. 必须所有人投赞成票（100%）才算达成共识
+5. 总结会议结果`,
+    },
+    model: {
+        provider: 'anthropic',
+        model: 'claude-3-5-sonnet-20241022',
+        temperature: 0.7,
+        enableThinking: true,
+    },
+    tools: {}, // 主持人不使用工具
+};
 ```
 
-**Step 2: 提交**
+### 子 Agent (`server/src/config/agents/team-lead.ts`)
 
-```bash
-git add server/src/agent/agent-logger.ts
-git commit -m "feat: add agent execution logger"
+```typescript
+export const teamLeadConfig: AgentConfig = {
+    id: 'team-lead',
+    role: {
+        id: 'team-lead',
+        name: '技术负责人',
+        description: '关注技术可行性、架构设计、最佳实践',
+        perspective: '技术优先，平衡进度与质量',
+    },
+    model: {
+        provider: 'anthropic',
+        model: 'claude-3-5-sonnet-20241022',
+        temperature: 0.7,
+        enableThinking: true,
+    },
+    tools: {
+        todo_write: true,
+    },
+};
 ```
 
 ---
 
-### Task 5: 集成日志到 Standard Agent
+## 与计划的差异
 
-**Files:**
-- Modify: `server/src/agent/standard-agent.ts`
-
-**Step 1: 导入日志记录器**
-
-```typescript
-import { agentLogger } from './agent-logger.js';
-```
-
-**Step 2: 更新 execute 方法**
-
-```typescript
-async execute(input: AgentInput): Promise<AgentResult> {
-    const startTime = Date.now();
-    const inputLength = JSON.stringify(input.messages).length;
-
-    try {
-        const messagesWithSystem: BaseMessage[] = [
-            new SystemMessage(buildSystemPrompt(cfg)),
-            ...input.messages,
-        ];
-
-        const result = await langchainAgent.invoke({ messages: messagesWithSystem });
-        const duration = Date.now() - startTime;
-
-        const agentResult: AgentResult = {
-            agentId: cfg.id,
-            message: result.messages[result.messages.length - 1],
-            metadata: {
-                modelName: cfg.model.model,
-                agentName: cfg.role.name,
-            },
-        };
-
-        // 记录成功日志
-        agentLogger.log(cfg, inputLength, agentResult, duration);
-
-        return agentResult;
-    } catch (error) {
-        const duration = Date.now() - startTime;
-        const errorMessage = error instanceof Error ? error.message : String(error);
-
-        // 记录失败日志
-        agentLogger.log(
-            cfg,
-            inputLength,
-            { agentId: cfg.id, message: { content: '' } } as AgentResult,
-            duration,
-            errorMessage
-        );
-
-        throw error;
-    }
-}
-```
-
-**Step 3: 运行类型检查**
-
-```bash
-cd server && pnpm exec tsc --noEmit
-```
-
-Expected: No errors
-
-**Step 4: 提交**
-
-```bash
-git add server/src/agent/standard-agent.ts
-git commit -m "feat: integrate logger with standard agent"
-```
+| 计划 | 实际实现 | 差异 |
+|------|---------|------|
+| ToolRegistry 接口 | ToolRegistryManager 类 | ✅ 一致 |
+| ToolsConfig 接口 | Record<string, boolean> | ⚠️ 简化 |
+| masterAgent 类 | consensusAgentFunction | ⚠️ 单函数模式 |
+| 多个 Agent 节点 | 单一 consensusAgentFunction | ⚠️ 单节点模式 |
+| 事件支持 | 未实现 | ❌ 延后 |
+| 验证器、缓存、日志 | 未实现 | ❌ 延后 |
 
 ---
 
-## 任务完成检查清单
+## 后续工作
 
-- [ ] Agent 配置验证器实现完成
-- [ ] Agent 缓存管理器实现完成
-- [ ] Standard Agent 集成验证和缓存
-- [ ] Agent 执行日志记录器实现完成
-- [ ] 所有类型检查通过
-- [ ] 所有更改已提交
+### 必须完成
+- [ ] Agent 验证器（确保配置正确）
+- [ ] Agent 缓存管理器（提高性能）
+- [ ] Agent 日志记录器（调试和监控）
+
+### 可选功能
+- [ ] 事件支持（前端实时更新）
+- [ ] 搜索工具
+- [ ] 代码执行工具
+- [ ] API 调用工具
+
+---
+
+## 文件结构
+
+```
+server/src/agent/
+├── types.ts                  # 核心类型定义
+├── consensus-state.ts        # 共识状态定义
+├── consensus-graph.ts        # 共识流程图
+├── standard-agent.ts         # 标准 Agent 创建器
+├── tools/
+│   ├── registry.ts           # 工具注册表
+│   ├── index.ts              # 工具初始化
+│   └── todo-write.ts         # TodoWrite 工具
+├── config/
+│   ├── master-agent.ts       # 主持人配置
+│   └── agents/               # 子 Agent 配置
+│       ├── team-lead.ts
+│       └── backend-engineer.ts
+└── utils/
+    ├── initChatModel.ts      # 模型初始化
+    └── ask-agents.ts         # 子 Agent 调用工具
+```
